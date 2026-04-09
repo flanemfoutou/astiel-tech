@@ -1,0 +1,15 @@
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "skipLibCheck": true,
+    "baseUrl": ".",
+    "paths": {
+      "@astiell/domain": ["packages/domain/src/index.ts"],
+      "@astiell/db": ["packages/db/src/index.ts"],
+      "@astiell/shared": ["packages/shared/src/index.ts"]
+    }
+  }
+}

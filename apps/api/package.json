@@ -1,0 +1,23 @@
+{
+  "name": "@astiell/api",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "bun --env-file=.env --hot src/index.ts",
+    "build": "bun build src/index.ts --outdir dist",
+    "start": "bun --env-file=.env run dist/index.js"
+  },
+  "dependencies": {
+    "@astiell/db": "workspace:*",
+    "@astiell/domain": "workspace:*",
+    "@astiell/shared": "workspace:*",
+    "@graphql-tools/schema": "^10.0.0",
+    "graphql": "^16.8.0",
+    "graphql-yoga": "^5.0.0"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "typescript": "*"
+  }
+}
