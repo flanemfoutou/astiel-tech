@@ -1,7 +1,7 @@
 import { db } from '@astiell/db';
 import {
   DrizzleCustomerRepository,
-  DrizzleProjetRepository,
+  DrizzleProjectRepository,
   DrizzleServiceRepository,
 } from '@astiell/db';
 import {
@@ -9,19 +9,20 @@ import {
   GetCustomerUseCase,
   ListCustomersUseCase,
   UpdateCustomerUseCase,
-  CreateProjetUseCase,
-  GetProjetUseCase,
-  CloturerProjetUseCase,
+  CreateProjectUseCase,
+  GetProjectUseCase,
+  UpdateProjectUseCase,
+  DeleteProjectUseCase,
 } from '@astiell/domain';
 
 const customerRepository = new DrizzleCustomerRepository(db);
-const projetRepository = new DrizzleProjetRepository(db);
+const projectRepository = new DrizzleProjectRepository(db);
 const serviceRepository = new DrizzleServiceRepository(db);
 
 export const buildContext = () => ({
   repositories: {
     customer: customerRepository,
-    projet: projetRepository,
+    project: projectRepository,
     service: serviceRepository,
   },
   useCases: {
@@ -29,9 +30,10 @@ export const buildContext = () => ({
     getCustomer: new GetCustomerUseCase(customerRepository),
     listCustomers: new ListCustomersUseCase(customerRepository),
     updateCustomer: new UpdateCustomerUseCase(customerRepository),
-    createProjet: new CreateProjetUseCase(projetRepository),
-    getProjet: new GetProjetUseCase(projetRepository),
-    cloturerProjet: new CloturerProjetUseCase(projetRepository),
+    createProject: new CreateProjectUseCase(projectRepository),
+    getProject: new GetProjectUseCase(projectRepository),
+    updateProject: new UpdateProjectUseCase(projectRepository),
+    deleteProject: new DeleteProjectUseCase(projectRepository),
   },
 });
 

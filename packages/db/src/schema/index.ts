@@ -1,3 +1,3 @@
 export * from './customers';
-export * from './projets';
+export * from './projects';
 export * from './services';

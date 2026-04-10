@@ -1,4 +1,4 @@
-import { eq, count, or } from 'drizzle-orm';
+import { eq, count, or, and, ne } from 'drizzle-orm';
 import { Customer } from '@astiell/domain';
 import { ok, err, NotFoundError, paginate, type Result, type PaginationInput, type PaginatedResult } from '@astiell/shared';
 import type { ICustomerRepository } from '@astiell/domain';
@@ -44,7 +44,15 @@ export class DrizzleCustomerRepository implements ICustomerRepository {
       .values(plain)
       .onConflictDoUpdate({
         target: customers.id,
-        set: { nom: plain.nom, prenom: plain.prenom, entreprise: plain.entreprise, adresse: plain.adresse, updatedAt: new Date() },
+        set: {
+          nom: plain.nom,
+          prenom: plain.prenom,
+          email: plain.email,
+          telephone: plain.telephone,
+          entreprise: plain.entreprise,
+          adresse: plain.adresse,
+          updatedAt: new Date(),
+        },
       });
     return ok(customer);
   }
@@ -54,19 +62,53 @@ export class DrizzleCustomerRepository implements ICustomerRepository {
     return ok(undefined);
   }
 
-  // ✅ Vérifie email OU téléphone — retourne le champ en conflit
+  // ✅ Vérifie email OU téléphone en excluant le customer actuel
   async existsByEmailOrPhone(
     email: string,
-    telephone: string
+    telephone: string,
+    excludeId?: string
   ): Promise<{ exists: boolean; field: 'email' | 'telephone' | null }> {
+    const condition = or(
+      eq(customers.email, email),
+      eq(customers.telephone, telephone)
+    );
+
     const [row] = await this.db
       .select({ email: customers.email, telephone: customers.telephone })
       .from(customers)
-      .where(or(eq(customers.email, email), eq(customers.telephone, telephone)))
+      .where(
+        excludeId
+          ? and(condition, ne(customers.id, excludeId))  // ✅ exclut le customer actuel
+          : condition
+      )
       .limit(1);
 
     if (!row) return { exists: false, field: null };
     if (row.email === email) return { exists: true, field: 'email' };
     return { exists: true, field: 'telephone' };
+  }
+
+  // ✅ Vérifie nom + prénom en excluant le customer actuel
+  async existsByFullName(
+    nom: string,
+    prenom: string,
+    excludeId?: string
+  ): Promise<boolean> {
+    const condition = and(
+      eq(customers.nom, nom),
+      eq(customers.prenom, prenom)
+    );
+
+    const [row] = await this.db
+      .select({ id: customers.id })
+      .from(customers)
+      .where(
+        excludeId
+          ? and(condition, ne(customers.id, excludeId))  // ✅ exclut le customer actuel
+          : condition
+      )
+      .limit(1);
+
+    return !!row;
   }
 }

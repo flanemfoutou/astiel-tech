@@ -6,11 +6,16 @@ export interface ICustomerRepository {
   findById(id: string): Promise<Result<Customer>>;
   findByEmail(email: string): Promise<Result<Customer>>;
   findAll(pagination?: PaginationInput): Promise<PaginatedResult<Customer>>;
-  // ✅ Remplace existsByEmail
   existsByEmailOrPhone(
     email: string,
-    telephone: string
+    telephone: string,
+    excludeId?: string  // ✅ exclut le customer en cours de modification
   ): Promise<{ exists: boolean; field: 'email' | 'telephone' | null }>;
+  existsByFullName(
+    nom: string,
+    prenom: string,
+    excludeId?: string  // ✅ exclut le customer en cours de modification
+  ): Promise<boolean>;
   save(customer: Customer): Promise<Result<Customer>>;
   delete(id: string): Promise<Result<void>>;
 }

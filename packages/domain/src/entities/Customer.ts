@@ -26,7 +26,7 @@ export class Customer {
     const now = new Date();
     return new Customer({
       ...input,
-      id: generateId('cus'),  // ✅ "cus_<uuid>"
+      id: generateId('cus'),
       createdAt: now,
       updatedAt: now,
     });
@@ -50,9 +50,14 @@ export class Customer {
     return `${this.props.prenom} ${this.props.nom}`;
   }
 
+  // ✅ email et telephone ajoutés
   mettreAJour(
-    updates: Partial<Pick<CustomerProps, 'nom' | 'prenom' | 'entreprise' | 'adresse'>>
+    updates: Partial<Pick<CustomerProps, 'nom' | 'prenom' | 'email' | 'telephone' | 'entreprise' | 'adresse'>>
   ): Customer {
+    // ✅ Revalide email et téléphone si modifiés
+    if (updates.email) Email.create(updates.email);
+    if (updates.telephone) PhoneNumber.create(updates.telephone);
+
     return new Customer({
       ...this.props,
       ...updates,
