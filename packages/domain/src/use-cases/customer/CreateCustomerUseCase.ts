@@ -1,6 +1,6 @@
 import type { ICustomerRepository } from '../../repositories/ICustomerRepository';
 import { Customer } from '../../entities/Customer';
-import { ok, err, ValidationError, type Result } from '@astiell/shared';
+import { err, ValidationError, type Result } from '@astiell/shared';
 
 export interface CreateCustomerInput {
   nom: string;
@@ -16,15 +16,24 @@ export class CreateCustomerUseCase {
 
   async execute(input: CreateCustomerInput): Promise<Result<Customer>> {
     try {
-      const emailExists = await this.customerRepository.existsByEmail(input.email);
-      if (emailExists) {
-        return err(new ValidationError(`Un customer avec l'email "${input.email}" existe déjà`, 'email'));
+      const { exists, field } = await this.customerRepository.existsByEmailOrPhone(
+        input.email,
+        input.telephone
+      );
+
+      if (exists) {
+        const message =
+          field === 'email'
+            ? `Customer with email "${input.email}" already exists in the database`
+            : `Customer with phone number "${input.telephone}" already exists in the database`;
+
+        return err(new ValidationError(message, field!));
       }
 
       const customer = Customer.create(input);
       return await this.customerRepository.save(customer);
     } catch (e) {
-      return err(e instanceof Error ? e : new Error('Erreur inattendue'));
+      return err(e instanceof Error ? e : new Error('Unexpected error'));
     }
   }
 }

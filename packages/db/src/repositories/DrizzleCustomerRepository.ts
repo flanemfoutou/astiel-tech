@@ -1,4 +1,4 @@
-import { eq, count } from 'drizzle-orm';
+import { eq, count, or } from 'drizzle-orm';
 import { Customer } from '@astiell/domain';
 import { ok, err, NotFoundError, paginate, type Result, type PaginationInput, type PaginatedResult } from '@astiell/shared';
 import type { ICustomerRepository } from '@astiell/domain';
@@ -54,8 +54,19 @@ export class DrizzleCustomerRepository implements ICustomerRepository {
     return ok(undefined);
   }
 
-  async existsByEmail(email: string): Promise<boolean> {
-    const [row] = await this.db.select({ id: customers.id }).from(customers).where(eq(customers.email, email));
-    return !!row;
+  // ✅ Vérifie email OU téléphone — retourne le champ en conflit
+  async existsByEmailOrPhone(
+    email: string,
+    telephone: string
+  ): Promise<{ exists: boolean; field: 'email' | 'telephone' | null }> {
+    const [row] = await this.db
+      .select({ email: customers.email, telephone: customers.telephone })
+      .from(customers)
+      .where(or(eq(customers.email, email), eq(customers.telephone, telephone)))
+      .limit(1);
+
+    if (!row) return { exists: false, field: null };
+    if (row.email === email) return { exists: true, field: 'email' };
+    return { exists: true, field: 'telephone' };
   }
 }

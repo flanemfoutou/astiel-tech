@@ -26,7 +26,7 @@ export class Customer {
     const now = new Date();
     return new Customer({
       ...input,
-      id: generateId(),
+      id: generateId('cus'),  // ✅ "cus_<uuid>"
       createdAt: now,
       updatedAt: now,
     });
@@ -50,7 +50,9 @@ export class Customer {
     return `${this.props.prenom} ${this.props.nom}`;
   }
 
-  mettreAJour(updates: Partial<Pick<CustomerProps, 'nom' | 'prenom' | 'entreprise' | 'adresse'>>): Customer {
+  mettreAJour(
+    updates: Partial<Pick<CustomerProps, 'nom' | 'prenom' | 'entreprise' | 'adresse'>>
+  ): Customer {
     return new Customer({
       ...this.props,
       ...updates,

@@ -1,11 +1,12 @@
-import { pgTable, uuid, varchar, text, timestamp } from 'drizzle-orm/pg-core';
+import { pgTable, varchar, text, timestamp } from 'drizzle-orm/pg-core';
 
 export const customers = pgTable('customers', {
-  id: uuid('id').primaryKey().defaultRandom(),
+  // ✅ varchar — plus uuid
+  id: varchar('id', { length: 40 }).primaryKey(),
   nom: varchar('nom', { length: 100 }).notNull(),
   prenom: varchar('prenom', { length: 100 }).notNull(),
   email: varchar('email', { length: 255 }).notNull().unique(),
-  telephone: varchar('telephone', { length: 20 }).notNull(),
+  telephone: varchar('telephone', { length: 20 }).notNull().unique(),
   entreprise: varchar('entreprise', { length: 255 }),
   adresse: text('adresse'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),

@@ -2,7 +2,11 @@ import type { GraphQLContext } from '../../context';
 
 export const customerResolvers = {
   Query: {
-    getCustomer: async (_: unknown, { id }: { id: string }, ctx: GraphQLContext) => {
+    getCustomer: async (
+      _: unknown,
+      { id }: { id: string },
+      ctx: GraphQLContext
+    ) => {
       const result = await ctx.useCases.getCustomer.execute(id);
       if (!result.success) throw new Error(result.error.message);
       return result.value.toPlain();
@@ -24,7 +28,9 @@ export const customerResolvers = {
   Mutation: {
     createCustomer: async (
       _: unknown,
-      { input }: {
+      {
+        input,
+      }: {
         input: {
           nom: string;
           prenom: string;
@@ -37,15 +43,26 @@ export const customerResolvers = {
       ctx: GraphQLContext
     ) => {
       const result = await ctx.useCases.createCustomer.execute(input);
-      if (!result.success) throw new Error(result.error.message);
+      if (!result.success) {
+        // ✅ Le message d'erreur du use case remonte directement au client
+        throw new Error(result.error.message);
+      }
       return result.value.toPlain();
     },
 
     updateCustomer: async (
       _: unknown,
-      { id, input }: {
+      {
+        id,
+        input,
+      }: {
         id: string;
-        input: { nom?: string; prenom?: string; entreprise?: string; adresse?: string };
+        input: {
+          nom?: string;
+          prenom?: string;
+          entreprise?: string;
+          adresse?: string;
+        };
       },
       ctx: GraphQLContext
     ) => {
@@ -54,7 +71,11 @@ export const customerResolvers = {
       return result.value.toPlain();
     },
 
-    deleteCustomer: async (_: unknown, { id }: { id: string }, ctx: GraphQLContext) => {
+    deleteCustomer: async (
+      _: unknown,
+      { id }: { id: string },
+      ctx: GraphQLContext
+    ) => {
       const result = await ctx.repositories.customer.delete(id);
       if (!result.success) throw new Error(result.error.message);
       return true;
