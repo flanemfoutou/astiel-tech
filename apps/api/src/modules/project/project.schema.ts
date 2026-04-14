@@ -12,6 +12,7 @@ export const projectTypeDefs = /* GraphQL */ `
     description: String
     status: ProjectStatus!
     customerId: ID!
+    customer: Customer
     startDate: String!
     endDate: String
     createdAt: String!
@@ -19,11 +20,11 @@ export const projectTypeDefs = /* GraphQL */ `
   }
 
   input CreateProjectInput {
-    title: String!
+    title: String
     description: String
-    status: ProjectStatus!
-    customerId: ID!
-    startDate: String!
+    status: ProjectStatus
+    customerId: ID
+    startDate: String
     endDate: String
   }
 
@@ -35,9 +36,9 @@ export const projectTypeDefs = /* GraphQL */ `
   }
 
   extend type Query {
-    projects: [Project!]!
-    project(id: ID!): Project
-    projectsByCustomer(customerId: ID!): [Project!]!
+    getProject(id: ID!): Project
+    listProjects: [Project!]!
+    listProjectsByCustomer(customerId: ID!): [Project!]!
   }
 
   extend type Mutation {

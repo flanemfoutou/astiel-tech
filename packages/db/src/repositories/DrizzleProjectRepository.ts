@@ -4,6 +4,7 @@ import { ok, err, type Result } from '@astiell/shared';
 import type { IProjectRepository } from '@astiell/domain';
 import type { Database } from '../connection';
 import { projects } from '../schema/projects';
+import { customers } from '../schema/customers';
 
 export class DrizzleProjectRepository implements IProjectRepository {
   constructor(private readonly db: Database) {}
@@ -39,17 +40,21 @@ export class DrizzleProjectRepository implements IProjectRepository {
     }));
   }
 
-  // ✅ Vérifie si un customer est déjà attaché à un project avec le même titre
   async existsByCustomerAndTitle(customerId: string, title: string): Promise<boolean> {
     const [row] = await this.db
       .select({ id: projects.id })
       .from(projects)
-      .where(
-        and(
-          eq(projects.customerId, customerId),
-          eq(projects.title, title)
-        )
-      )
+      .where(and(eq(projects.customerId, customerId), eq(projects.title, title)))
+      .limit(1);
+    return !!row;
+  }
+
+  // ✅ Vérifie si le customerId existe dans la table customers
+  async existsCustomer(customerId: string): Promise<boolean> {
+    const [row] = await this.db
+      .select({ id: customers.id })
+      .from(customers)
+      .where(eq(customers.id, customerId))
       .limit(1);
     return !!row;
   }

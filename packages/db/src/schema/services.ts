@@ -1,4 +1,4 @@
-import { pgTable, uuid, varchar, text, integer, boolean, timestamp, pgEnum } from 'drizzle-orm/pg-core';
+import { pgTable, varchar, text, integer, boolean, timestamp, pgEnum } from 'drizzle-orm/pg-core';
 
 export const serviceCategoryEnum = pgEnum('service_category', [
   'TIC',
@@ -9,7 +9,8 @@ export const serviceCategoryEnum = pgEnum('service_category', [
 ]);
 
 export const services = pgTable('services', {
-  id: uuid('id').primaryKey().defaultRandom(),
+  // varchar car l'id contient le préfixe "ser-" (ex: ser-550e8400-e29b-...)
+  id: varchar('id', { length: 40 }).primaryKey(),
   nom: varchar('nom', { length: 255 }).notNull(),
   description: text('description').notNull(),
   categorie: serviceCategoryEnum('categorie').notNull(),

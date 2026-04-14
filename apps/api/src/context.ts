@@ -11,18 +11,21 @@ import {
   UpdateCustomerUseCase,
   CreateProjectUseCase,
   GetProjectUseCase,
-  UpdateProjectUseCase,
-  DeleteProjectUseCase,
+  CloturerProjectUseCase,
+  CreateServiceUseCase,
+  GetServiceUseCase,
+  ListServicesUseCase,
+  UpdateServiceUseCase,
 } from '@astiell/domain';
 
 const customerRepository = new DrizzleCustomerRepository(db);
-const projectRepository = new DrizzleProjectRepository(db);
+const projetRepository = new DrizzleProjectRepository(db);
 const serviceRepository = new DrizzleServiceRepository(db);
 
 export const buildContext = () => ({
   repositories: {
     customer: customerRepository,
-    project: projectRepository,
+    projet: projetRepository,
     service: serviceRepository,
   },
   useCases: {
@@ -30,10 +33,13 @@ export const buildContext = () => ({
     getCustomer: new GetCustomerUseCase(customerRepository),
     listCustomers: new ListCustomersUseCase(customerRepository),
     updateCustomer: new UpdateCustomerUseCase(customerRepository),
-    createProject: new CreateProjectUseCase(projectRepository),
-    getProject: new GetProjectUseCase(projectRepository),
-    updateProject: new UpdateProjectUseCase(projectRepository),
-    deleteProject: new DeleteProjectUseCase(projectRepository),
+    createProjet: new CreateProjectUseCase(projetRepository),
+    getProjet: new GetProjectUseCase(projetRepository),
+    cloturerProjet: new CloturerProjectUseCase(projetRepository),
+    createService: new CreateServiceUseCase(serviceRepository),
+    getService: new GetServiceUseCase(serviceRepository),
+    listServices: new ListServicesUseCase(serviceRepository),
+    updateService: new UpdateServiceUseCase(serviceRepository),
   },
 });
 

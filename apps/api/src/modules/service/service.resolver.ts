@@ -3,13 +3,22 @@ import type { ServiceCategory } from '@astiell/domain';
 
 export const serviceResolvers = {
   Query: {
-    service: async (_: unknown, { id }: { id: string }, ctx: GraphQLContext) => {
-      const result = await ctx.repositories.service.findById(id);
+    getService: async (_: unknown, { id }: { id: string }, ctx: GraphQLContext) => {
+      const result = await ctx.useCases.getService.execute(id);
       if (!result.success) throw new Error(result.error.message);
       return result.value.toPlain();
     },
 
-    servicesByCategorie: async (
+    listServices: async (
+      _: unknown,
+      { pagination }: { pagination?: { page?: number; limit?: number } },
+      ctx: GraphQLContext
+    ) => {
+      const result = await ctx.useCases.listServices.execute(pagination);
+      return { ...result, items: result.items.map(s => s.toPlain()) };
+    },
+
+    listServicesByCategorie: async (
       _: unknown,
       { categorie }: { categorie: ServiceCategory },
       ctx: GraphQLContext
@@ -18,7 +27,7 @@ export const serviceResolvers = {
       return items.map(s => s.toPlain());
     },
 
-    servicesActifs: async (_: unknown, __: unknown, ctx: GraphQLContext) => {
+    listServicesActifs: async (_: unknown, __: unknown, ctx: GraphQLContext) => {
       const items = await ctx.repositories.service.findActifs();
       return items.map(s => s.toPlain());
     },
@@ -30,11 +39,25 @@ export const serviceResolvers = {
       { input }: { input: { nom: string; description: string; categorie: ServiceCategory; tarifJournalier?: number } },
       ctx: GraphQLContext
     ) => {
-      const { Service } = await import('@astiell/domain');
-      const service = Service.create({ ...input, actif: true });
-      const result = await ctx.repositories.service.save(service);
+      const result = await ctx.useCases.createService.execute(input);
       if (!result.success) throw new Error(result.error.message);
       return result.value.toPlain();
+    },
+
+    updateService: async (
+      _: unknown,
+      { id, input }: { id: string; input: { nom?: string; description?: string; categorie?: ServiceCategory; tarifJournalier?: number } },
+      ctx: GraphQLContext
+    ) => {
+      const result = await ctx.useCases.updateService.execute({ id, ...input });
+      if (!result.success) throw new Error(result.error.message);
+      return result.value.toPlain();
+    },
+
+    deleteService: async (_: unknown, { id }: { id: string }, ctx: GraphQLContext) => {
+      const result = await ctx.repositories.service.delete(id);
+      if (!result.success) throw new Error(result.error.message);
+      return true;
     },
 
     desactiverService: async (_: unknown, { id }: { id: string }, ctx: GraphQLContext) => {

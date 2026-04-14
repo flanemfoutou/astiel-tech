@@ -18,6 +18,14 @@ export const serviceTypeDefs = /* GraphQL */ `
     updatedAt: String!
   }
 
+  type PaginatedServices {
+    items: [Service!]!
+    total: Int!
+    page: Int!
+    limit: Int!
+    totalPages: Int!
+  }
+
   input CreateServiceInput {
     nom: String!
     description: String!
@@ -25,14 +33,24 @@ export const serviceTypeDefs = /* GraphQL */ `
     tarifJournalier: Int
   }
 
+  input UpdateServiceInput {
+    nom: String
+    description: String
+    categorie: ServiceCategory
+    tarifJournalier: Int
+  }
+
   extend type Query {
-    service(id: ID!): Service
-    servicesByCategorie(categorie: ServiceCategory!): [Service!]!
-    servicesActifs: [Service!]!
+    getService(id: ID!): Service
+    listServices(pagination: PaginationInput): PaginatedServices!
+    listServicesByCategorie(categorie: ServiceCategory!): [Service!]!
+    listServicesActifs: [Service!]!
   }
 
   extend type Mutation {
     createService(input: CreateServiceInput!): Service!
+    updateService(id: ID!, input: UpdateServiceInput!): Service!
+    deleteService(id: ID!): Boolean!
     desactiverService(id: ID!): Service!
   }
 `;
