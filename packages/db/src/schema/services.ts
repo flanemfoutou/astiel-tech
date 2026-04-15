@@ -1,4 +1,4 @@
-import { pgTable, varchar, text, integer, boolean, timestamp, pgEnum } from 'drizzle-orm/pg-core';
+import { pgTable, varchar, text, integer, timestamp, pgEnum } from 'drizzle-orm/pg-core';
 
 export const serviceCategoryEnum = pgEnum('service_category', [
   'TIC',
@@ -8,14 +8,20 @@ export const serviceCategoryEnum = pgEnum('service_category', [
   'FOURNITURE',
 ]);
 
+// ✅ Enum statut
+export const serviceStatusEnum = pgEnum('service_status', [
+  'ACTIF',
+  'INACTIF',
+  'BLOQUE',
+]);
+
 export const services = pgTable('services', {
-  // varchar car l'id contient le préfixe "ser-" (ex: ser-550e8400-e29b-...)
   id: varchar('id', { length: 40 }).primaryKey(),
   nom: varchar('nom', { length: 255 }).notNull(),
   description: text('description').notNull(),
   categorie: serviceCategoryEnum('categorie').notNull(),
   tarifJournalier: integer('tarif_journalier'),
-  actif: boolean('actif').notNull().default(true),
+  statut: serviceStatusEnum('statut').notNull().default('ACTIF'), // ✅ remplace actif
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });

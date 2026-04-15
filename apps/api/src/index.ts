@@ -5,8 +5,8 @@ import { buildContext } from './context';
 const yoga = createYoga({
   schema,
   context: buildContext,
-  // ✅ Désactive le masquage des erreurs pour propager les vrais messages
   maskedErrors: false,
+  graphiql: true, // ✅
 });
 
 const server = Bun.serve({

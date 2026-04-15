@@ -20,11 +20,11 @@ export const projectTypeDefs = /* GraphQL */ `
   }
 
   input CreateProjectInput {
-    title: String
+    title: String!
     description: String
-    status: ProjectStatus
-    customerId: ID
-    startDate: String
+    status: ProjectStatus!
+    customerId: ID!
+    startDate: String!
     endDate: String
   }
 

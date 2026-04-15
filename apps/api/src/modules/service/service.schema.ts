@@ -7,13 +7,20 @@ export const serviceTypeDefs = /* GraphQL */ `
     FOURNITURE
   }
 
+  # ✅ Statut du service
+  enum ServiceStatus {
+    ACTIF
+    INACTIF
+    BLOQUE
+  }
+
   type Service {
     id: ID!
     nom: String!
     description: String!
     categorie: ServiceCategory!
     tarifJournalier: Int
-    actif: Boolean!
+    statut: ServiceStatus!
     createdAt: String!
     updatedAt: String!
   }
@@ -51,6 +58,8 @@ export const serviceTypeDefs = /* GraphQL */ `
     createService(input: CreateServiceInput!): Service!
     updateService(id: ID!, input: UpdateServiceInput!): Service!
     deleteService(id: ID!): Boolean!
+    activerService(id: ID!): Service!
     desactiverService(id: ID!): Service!
+    bloquerService(id: ID!): Service!
   }
 `;

@@ -10,13 +10,22 @@ export const SERVICE_CATEGORIES = {
 
 export type ServiceCategory = keyof typeof SERVICE_CATEGORIES;
 
+// ✅ Statut du service
+export const SERVICE_STATUSES = {
+  ACTIF: 'ACTIF',
+  INACTIF: 'INACTIF',
+  BLOQUE: 'BLOQUE',
+} as const;
+
+export type ServiceStatus = keyof typeof SERVICE_STATUSES;
+
 export interface ServiceProps {
   id: Id;
   nom: string;
   description: string;
   categorie: ServiceCategory;
   tarifJournalier?: number;
-  actif: boolean;
+  statut: ServiceStatus; // ✅ remplace actif boolean
   createdAt: Date;
   updatedAt: Date;
 }
@@ -28,7 +37,8 @@ export class Service {
     const now = new Date();
     return new Service({
       ...input,
-      id: generateId(),
+      id: generateId('ser'),
+      statut: input.statut ?? 'ACTIF', // ✅ ACTIF par défaut
       createdAt: now,
       updatedAt: now,
     });
@@ -43,12 +53,27 @@ export class Service {
   get description() { return this.props.description; }
   get categorie() { return this.props.categorie; }
   get tarifJournalier() { return this.props.tarifJournalier; }
-  get actif() { return this.props.actif; }
+  get statut() { return this.props.statut; }
   get createdAt() { return this.props.createdAt; }
   get updatedAt() { return this.props.updatedAt; }
 
+  mettreAJour(
+    updates: Partial<Pick<ServiceProps, 'nom' | 'description' | 'categorie' | 'tarifJournalier'>>
+  ): Service {
+    return new Service({ ...this.props, ...updates, updatedAt: new Date() });
+  }
+
+  // ✅ Transitions de statut
+  activer(): Service {
+    return new Service({ ...this.props, statut: 'ACTIF', updatedAt: new Date() });
+  }
+
   desactiver(): Service {
-    return new Service({ ...this.props, actif: false, updatedAt: new Date() });
+    return new Service({ ...this.props, statut: 'INACTIF', updatedAt: new Date() });
+  }
+
+  bloquer(): Service {
+    return new Service({ ...this.props, statut: 'BLOQUE', updatedAt: new Date() });
   }
 
   toPlain(): ServiceProps {
