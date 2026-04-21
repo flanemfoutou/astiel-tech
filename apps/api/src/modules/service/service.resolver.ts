@@ -8,9 +8,8 @@ export const serviceResolvers = {
       { id }: { id: string },
       ctx: GraphQLContext
     ) => {
-      if (!id?.trim()) throw new Error('You must provide a service ID');
-      const result = await ctx.repositories.service.findById(id);
-      if (!result.success) throw new Error(`No service found with ID "${id}"`);
+      const result = await ctx.useCases.getService.execute(id);
+      if (!result.success) throw new Error(result.error.message);
       return result.value.toPlain();
     },
 
@@ -19,7 +18,7 @@ export const serviceResolvers = {
       { pagination }: { pagination?: { page?: number; limit?: number } },
       ctx: GraphQLContext
     ) => {
-      const result = await ctx.repositories.service.findAll(pagination);
+      const result = await ctx.useCases.listServices.execute(pagination);
       return {
         ...result,
         items: result.items.map(s => s.toPlain()),
@@ -39,6 +38,16 @@ export const serviceResolvers = {
       const items = await ctx.repositories.service.findActifs();
       return items.map(s => s.toPlain());
     },
+
+    listServicesDesActifs: async (_: unknown, __: unknown, ctx: GraphQLContext) => {
+      const items = await ctx.repositories.service.findInactifs();
+      return items.map(s => s.toPlain());
+    },
+
+    listServicesBloques: async (_: unknown, __: unknown, ctx: GraphQLContext) => {
+      const items = await ctx.repositories.service.findBloques();
+      return items.map(s => s.toPlain());
+    },
   },
 
   Mutation: {
@@ -54,13 +63,7 @@ export const serviceResolvers = {
       },
       ctx: GraphQLContext
     ) => {
-      if (!input.nom?.trim()) throw new Error('"nom" is required');
-      if (!input.description?.trim()) throw new Error('"description" is required');
-      if (!input.categorie) throw new Error('"categorie" is required');
-
-      const { Service } = await import('@astiell/domain');
-      const service = Service.create({ ...input, statut: 'ACTIF' });
-      const result = await ctx.repositories.service.save(service);
+      const result = await ctx.useCases.createService.execute(input);
       if (!result.success) throw new Error(result.error.message);
       return result.value.toPlain();
     },
@@ -78,13 +81,9 @@ export const serviceResolvers = {
       },
       ctx: GraphQLContext
     ) => {
-      if (!id?.trim()) throw new Error('"id" is required to update a service');
-      const findResult = await ctx.repositories.service.findById(id);
-      if (!findResult.success) throw new Error(`No service found with ID "${id}"`);
-      const updated = findResult.value.mettreAJour(input);
-      const saveResult = await ctx.repositories.service.save(updated);
-      if (!saveResult.success) throw new Error(saveResult.error.message);
-      return saveResult.value.toPlain();
+      const result = await ctx.useCases.updateService.execute({ id, ...input });
+      if (!result.success) throw new Error(result.error.message);
+      return result.value.toPlain();
     },
 
     deleteService: async (
@@ -92,55 +91,39 @@ export const serviceResolvers = {
       { id }: { id: string },
       ctx: GraphQLContext
     ) => {
-      if (!id?.trim()) throw new Error('"id" is required to delete a service');
       const result = await ctx.repositories.service.delete(id);
       if (!result.success) throw new Error(result.error.message);
       return true;
     },
 
-    // ✅ Activer
     activerService: async (
       _: unknown,
       { id }: { id: string },
       ctx: GraphQLContext
     ) => {
-      if (!id?.trim()) throw new Error('"id" is required');
-      const findResult = await ctx.repositories.service.findById(id);
-      if (!findResult.success) throw new Error(`No service found with ID "${id}"`);
-      const activated = findResult.value.activer();
-      const saveResult = await ctx.repositories.service.save(activated);
-      if (!saveResult.success) throw new Error(saveResult.error.message);
-      return saveResult.value.toPlain();
+      const result = await ctx.useCases.activerService.execute(id);
+      if (!result.success) throw new Error(result.error.message);
+      return result.value.toPlain();
     },
 
-    // ✅ Désactiver
     desactiverService: async (
       _: unknown,
       { id }: { id: string },
       ctx: GraphQLContext
     ) => {
-      if (!id?.trim()) throw new Error('"id" is required');
-      const findResult = await ctx.repositories.service.findById(id);
-      if (!findResult.success) throw new Error(`No service found with ID "${id}"`);
-      const deactivated = findResult.value.desactiver();
-      const saveResult = await ctx.repositories.service.save(deactivated);
-      if (!saveResult.success) throw new Error(saveResult.error.message);
-      return saveResult.value.toPlain();
+      const result = await ctx.useCases.desactiverService.execute(id);
+      if (!result.success) throw new Error(result.error.message);
+      return result.value.toPlain();
     },
 
-    // ✅ Bloquer
     bloquerService: async (
       _: unknown,
       { id }: { id: string },
       ctx: GraphQLContext
     ) => {
-      if (!id?.trim()) throw new Error('"id" is required');
-      const findResult = await ctx.repositories.service.findById(id);
-      if (!findResult.success) throw new Error(`No service found with ID "${id}"`);
-      const blocked = findResult.value.bloquer();
-      const saveResult = await ctx.repositories.service.save(blocked);
-      if (!saveResult.success) throw new Error(saveResult.error.message);
-      return saveResult.value.toPlain();
+      const result = await ctx.useCases.bloquerService.execute(id);
+      if (!result.success) throw new Error(result.error.message);
+      return result.value.toPlain();
     },
   },
 };

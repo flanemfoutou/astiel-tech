@@ -7,7 +7,6 @@ export const serviceTypeDefs = /* GraphQL */ `
     FOURNITURE
   }
 
-  # ✅ Statut du service
   enum ServiceStatus {
     ACTIF
     INACTIF
@@ -52,6 +51,8 @@ export const serviceTypeDefs = /* GraphQL */ `
     listServices(pagination: PaginationInput): PaginatedServices!
     listServicesByCategorie(categorie: ServiceCategory!): [Service!]!
     listServicesActifs: [Service!]!
+    listServicesDesActifs: [Service!]!
+    listServicesBloques: [Service!]!
   }
 
   extend type Mutation {

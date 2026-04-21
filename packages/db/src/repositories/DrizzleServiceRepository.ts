@@ -1,4 +1,4 @@
-import { eq, count } from 'drizzle-orm';
+import { eq, ilike, and, count } from 'drizzle-orm';
 import { Service, type ServiceCategory } from '@astiell/domain';
 import { ok, err, NotFoundError, paginate, type Result, type PaginationInput, type PaginatedResult } from '@astiell/shared';
 import type { IServiceRepository } from '@astiell/domain';
@@ -14,13 +14,32 @@ export class DrizzleServiceRepository implements IServiceRepository {
     return ok(Service.reconstitute({ ...row, tarifJournalier: row.tarifJournalier ?? undefined }));
   }
 
+  async findByNomAndCategorie(nom: string, categorie: ServiceCategory): Promise<Service | null> {
+    const [row] = await this.db
+      .select()
+      .from(services)
+      .where(and(ilike(services.nom, nom.trim()), eq(services.categorie, categorie)));
+    if (!row) return null;
+    return Service.reconstitute({ ...row, tarifJournalier: row.tarifJournalier ?? undefined });
+  }
+
   async findByCategorie(categorie: ServiceCategory): Promise<Service[]> {
     const rows = await this.db.select().from(services).where(eq(services.categorie, categorie));
     return rows.map(row => Service.reconstitute({ ...row, tarifJournalier: row.tarifJournalier ?? undefined }));
   }
 
   async findActifs(): Promise<Service[]> {
-    const rows = await this.db.select().from(services).where(eq(services.actif, true));
+    const rows = await this.db.select().from(services).where(eq(services.statut, 'ACTIF'));
+    return rows.map(row => Service.reconstitute({ ...row, tarifJournalier: row.tarifJournalier ?? undefined }));
+  }
+
+  async findInactifs(): Promise<Service[]> {
+    const rows = await this.db.select().from(services).where(eq(services.statut, 'INACTIF'));
+    return rows.map(row => Service.reconstitute({ ...row, tarifJournalier: row.tarifJournalier ?? undefined }));
+  }
+
+  async findBloques(): Promise<Service[]> {
+    const rows = await this.db.select().from(services).where(eq(services.statut, 'BLOQUE'));
     return rows.map(row => Service.reconstitute({ ...row, tarifJournalier: row.tarifJournalier ?? undefined }));
   }
 
@@ -49,11 +68,12 @@ export class DrizzleServiceRepository implements IServiceRepository {
       .onConflictDoUpdate({
         target: services.id,
         set: {
-          nom: plain.nom,
-          description: plain.description,
-          actif: plain.actif,
+          nom:             plain.nom,
+          description:     plain.description,
+          categorie:       plain.categorie,
+          statut:          plain.statut,
           tarifJournalier: plain.tarifJournalier,
-          updatedAt: new Date(),
+          updatedAt:       new Date(),
         },
       });
     return ok(service);

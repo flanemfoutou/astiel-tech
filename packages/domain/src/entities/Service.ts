@@ -10,7 +10,6 @@ export const SERVICE_CATEGORIES = {
 
 export type ServiceCategory = keyof typeof SERVICE_CATEGORIES;
 
-// ✅ Statut du service
 export const SERVICE_STATUSES = {
   ACTIF: 'ACTIF',
   INACTIF: 'INACTIF',
@@ -25,20 +24,51 @@ export interface ServiceProps {
   description: string;
   categorie: ServiceCategory;
   tarifJournalier?: number;
-  statut: ServiceStatus; // ✅ remplace actif boolean
+  statut: ServiceStatus;
   createdAt: Date;
   updatedAt: Date;
 }
 
+// ─── Domain error for illegal status transitions ───────────────────────────
+
+export class InvalidStatusTransitionError extends Error {
+  constructor(from: ServiceStatus, to: ServiceStatus) {
+    super(
+      `Cannot transition service from "${from}" to "${to}". ` +
+      `Allowed transitions: ACTIF → INACTIF, ACTIF → BLOQUE, INACTIF → ACTIF, BLOQUE → ACTIF.`
+    );
+    this.name = 'InvalidStatusTransitionError';
+  }
+}
+
+// ─── Allowed transitions ───────────────────────────────────────────────────
+
+const ALLOWED_TRANSITIONS: Record<ServiceStatus, ServiceStatus[]> = {
+  ACTIF:   ['INACTIF', 'BLOQUE'],
+  INACTIF: ['ACTIF'],
+  BLOQUE:  ['ACTIF'],
+};
+
+function assertTransition(current: ServiceStatus, next: ServiceStatus): void {
+  if (!ALLOWED_TRANSITIONS[current].includes(next)) {
+    throw new InvalidStatusTransitionError(current, next);
+  }
+}
+
+// ─── Entity ────────────────────────────────────────────────────────────────
+
 export class Service {
   private constructor(private readonly props: ServiceProps) {}
 
-  static create(input: Omit<ServiceProps, 'id' | 'createdAt' | 'updatedAt'>): Service {
+  static create(
+    // statut is intentionally excluded — always starts as ACTIF
+    input: Omit<ServiceProps, 'id' | 'createdAt' | 'updatedAt' | 'statut'>
+  ): Service {
     const now = new Date();
     return new Service({
       ...input,
       id: generateId('ser'),
-      statut: input.statut ?? 'ACTIF', // ✅ ACTIF par défaut
+      statut: 'ACTIF',
       createdAt: now,
       updatedAt: now,
     });
@@ -48,14 +78,14 @@ export class Service {
     return new Service(props);
   }
 
-  get id() { return this.props.id; }
-  get nom() { return this.props.nom; }
-  get description() { return this.props.description; }
-  get categorie() { return this.props.categorie; }
+  get id()              { return this.props.id; }
+  get nom()             { return this.props.nom; }
+  get description()     { return this.props.description; }
+  get categorie()       { return this.props.categorie; }
   get tarifJournalier() { return this.props.tarifJournalier; }
-  get statut() { return this.props.statut; }
-  get createdAt() { return this.props.createdAt; }
-  get updatedAt() { return this.props.updatedAt; }
+  get statut()          { return this.props.statut; }
+  get createdAt()       { return this.props.createdAt; }
+  get updatedAt()       { return this.props.updatedAt; }
 
   mettreAJour(
     updates: Partial<Pick<ServiceProps, 'nom' | 'description' | 'categorie' | 'tarifJournalier'>>
@@ -63,16 +93,21 @@ export class Service {
     return new Service({ ...this.props, ...updates, updatedAt: new Date() });
   }
 
-  // ✅ Transitions de statut
+  /** Allowed from: INACTIF, BLOQUE */
   activer(): Service {
+    assertTransition(this.props.statut, 'ACTIF');
     return new Service({ ...this.props, statut: 'ACTIF', updatedAt: new Date() });
   }
 
+  /** Allowed from: ACTIF only */
   desactiver(): Service {
+    assertTransition(this.props.statut, 'INACTIF');
     return new Service({ ...this.props, statut: 'INACTIF', updatedAt: new Date() });
   }
 
+  /** Allowed from: ACTIF only */
   bloquer(): Service {
+    assertTransition(this.props.statut, 'BLOQUE');
     return new Service({ ...this.props, statut: 'BLOQUE', updatedAt: new Date() });
   }
 
