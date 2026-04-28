@@ -1,23 +1,24 @@
 import type { IServiceRepository } from '../../repositories/IServiceRepository';
-import type { Service, ServiceCategory } from '../../entities/Service';
-import { SERVICE_CATEGORIES } from '../../entities/Service';
+import type { Service, ServiceCategory, ServiceNom } from '../../entities/Service';
+import { SERVICE_CATEGORIES, SERVICE_NOMS } from '../../entities/Service';
 import { err, type Result } from '@astiell/shared';
 
 export interface UpdateServiceInput {
   id: string;
-  nom?: string;
+  nom?: ServiceNom;
   description?: string;
   categorie?: ServiceCategory;
   tarifJournalier?: number;
 }
 
-// ─── Validation ────────────────────────────────────────────────────────────
-
 function validateUpdateInput(input: UpdateServiceInput): void {
   const errors: string[] = [];
 
-  if (input.nom !== undefined && !input.nom?.trim()) {
-    errors.push('"nom" cannot be set to an empty value.');
+  if (input.nom !== undefined && !(input.nom in SERVICE_NOMS)) {
+    errors.push(
+      `"nom" has an invalid value "${input.nom}". ` +
+      `Accepted values: ${Object.keys(SERVICE_NOMS).join(', ')}.`
+    );
   }
 
   if (input.description !== undefined && !input.description?.trim()) {
@@ -45,29 +46,21 @@ function validateUpdateInput(input: UpdateServiceInput): void {
   }
 }
 
-// ─── Use Case ──────────────────────────────────────────────────────────────
-
 export class UpdateServiceUseCase {
   constructor(private readonly serviceRepository: IServiceRepository) {}
 
   async execute(input: UpdateServiceInput): Promise<Result<Service>> {
     try {
-      // ✅ Guard 1: ID must be provided
       if (!input.id?.trim()) {
         return err(new Error('"id" is required to update a service. Please provide a valid ID.'));
       }
 
-      // ✅ Guard 2: validate fields before touching the database
       validateUpdateInput(input);
 
-      // ✅ Guard 3: confirm the service exists
       const findResult = await this.serviceRepository.findById(input.id.trim());
       if (!findResult.success) {
         return err(
-          new Error(
-            `No service found with ID "${input.id}". ` +
-            `Please verify the ID and try again.`
-          )
+          new Error(`No service found with ID "${input.id}". Please verify the ID and try again.`)
         );
       }
 

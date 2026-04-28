@@ -1,19 +1,18 @@
 {
-  "id": "862e7c31-d8a0-4f6b-8cd2-d8dffefc4fa5",
+  "id": "960ea43d-04b2-47c0-9f37-10a4086dbe5a",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "6",
   "dialect": "postgresql",
   "tables": {
-    "public.clients": {
-      "name": "clients",
+    "public.customers": {
+      "name": "customers",
       "schema": "",
       "columns": {
         "id": {
           "name": "id",
-          "type": "uuid",
+          "type": "varchar(40)",
           "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
+          "notNull": true
         },
         "nom": {
           "name": "nom",
@@ -70,28 +69,35 @@
       "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
-        "clients_email_unique": {
-          "name": "clients_email_unique",
+        "customers_email_unique": {
+          "name": "customers_email_unique",
           "nullsNotDistinct": false,
           "columns": [
             "email"
           ]
+        },
+        "customers_telephone_unique": {
+          "name": "customers_telephone_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "telephone"
+          ]
         }
       }
     },
-    "public.projets": {
-      "name": "projets",
+    "public.projects": {
+      "name": "projects",
       "schema": "",
       "columns": {
         "id": {
           "name": "id",
-          "type": "text",
+          "type": "varchar(40)",
           "primaryKey": true,
           "notNull": true
         },
-        "titre": {
-          "name": "titre",
-          "type": "text",
+        "title": {
+          "name": "title",
+          "type": "varchar(255)",
           "primaryKey": false,
           "notNull": true
         },
@@ -101,41 +107,43 @@
           "primaryKey": false,
           "notNull": false
         },
-        "statut": {
-          "name": "statut",
-          "type": "text",
+        "status": {
+          "name": "status",
+          "type": "varchar(50)",
           "primaryKey": false,
           "notNull": true
         },
-        "clientId": {
-          "name": "clientId",
-          "type": "text",
+        "customer_id": {
+          "name": "customer_id",
+          "type": "varchar(40)",
           "primaryKey": false,
           "notNull": true
         },
-        "dateDebut": {
-          "name": "dateDebut",
-          "type": "timestamp",
+        "start_date": {
+          "name": "start_date",
+          "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": true
         },
-        "dateFin": {
-          "name": "dateFin",
-          "type": "timestamp",
+        "end_date": {
+          "name": "end_date",
+          "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": false
         },
-        "createdAt": {
-          "name": "createdAt",
-          "type": "timestamp",
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
           "primaryKey": false,
-          "notNull": true
+          "notNull": true,
+          "default": "now()"
         },
-        "updatedAt": {
-          "name": "updatedAt",
-          "type": "timestamp",
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
           "primaryKey": false,
-          "notNull": true
+          "notNull": true,
+          "default": "now()"
         }
       },
       "indexes": {},
@@ -149,14 +157,14 @@
       "columns": {
         "id": {
           "name": "id",
-          "type": "uuid",
+          "type": "varchar(40)",
           "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
+          "notNull": true
         },
         "nom": {
           "name": "nom",
-          "type": "varchar(255)",
+          "type": "service_nom",
+          "typeSchema": "public",
           "primaryKey": false,
           "notNull": true
         },
@@ -179,12 +187,240 @@
           "primaryKey": false,
           "notNull": false
         },
-        "actif": {
-          "name": "actif",
-          "type": "boolean",
+        "statut": {
+          "name": "statut",
+          "type": "service_status",
+          "typeSchema": "public",
           "primaryKey": false,
           "notNull": true,
-          "default": true
+          "default": "'ACTIF'"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {}
+    },
+    "public.project_services": {
+      "name": "project_services",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "varchar(45)",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "projet_id": {
+          "name": "projet_id",
+          "type": "varchar(45)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "service_id": {
+          "name": "service_id",
+          "type": "varchar(40)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "quantite": {
+          "name": "quantite",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        },
+        "prix_unitaire": {
+          "name": "prix_unitaire",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {}
+    },
+    "public.invoices": {
+      "name": "invoices",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "varchar(45)",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "numero": {
+          "name": "numero",
+          "type": "varchar(30)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "projet_id": {
+          "name": "projet_id",
+          "type": "varchar(45)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "customer_id": {
+          "name": "customer_id",
+          "type": "varchar(40)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "statut": {
+          "name": "statut",
+          "type": "invoice_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'BROUILLON'"
+        },
+        "date_emission": {
+          "name": "date_emission",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "date_echeance": {
+          "name": "date_echeance",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "montant_ht": {
+          "name": "montant_ht",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "taux_tva": {
+          "name": "taux_tva",
+          "type": "numeric(5, 2)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "montant_tva": {
+          "name": "montant_tva",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "montant_ttc": {
+          "name": "montant_ttc",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "notes": {
+          "name": "notes",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "invoices_numero_unique": {
+          "name": "invoices_numero_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "numero"
+          ]
+        }
+      }
+    },
+    "public.invoice_items": {
+      "name": "invoice_items",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "varchar(50)",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "invoice_id": {
+          "name": "invoice_id",
+          "type": "varchar(45)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "project_service_id": {
+          "name": "project_service_id",
+          "type": "varchar(45)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "designation": {
+          "name": "designation",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "quantite": {
+          "name": "quantite",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "prix_unitaire": {
+          "name": "prix_unitaire",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "montant_total": {
+          "name": "montant_total",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
         },
         "created_at": {
           "name": "created_at",
@@ -217,6 +453,38 @@
         "LOGISTIQUE",
         "COMMERCE",
         "FOURNITURE"
+      ]
+    },
+    "public.service_nom": {
+      "name": "service_nom",
+      "schema": "public",
+      "values": [
+        "DEVELOPPEMENT_APP_WEB_MOBILE",
+        "MAINTENANCE_INFORMATIQUE_BUREAUTIQUE",
+        "CONNEXION_INTERNET_RESEAUX",
+        "VIDEOSURVEILLANCE_CCTV",
+        "CONTROLE_ACCES",
+        "FOURNITURE_EQUIPEMENTS_INFORMATIQUES",
+        "FOURNITURE_CONSOMMABLES_TELECOM"
+      ]
+    },
+    "public.service_status": {
+      "name": "service_status",
+      "schema": "public",
+      "values": [
+        "ACTIF",
+        "INACTIF",
+        "BLOQUE"
+      ]
+    },
+    "public.invoice_status": {
+      "name": "invoice_status",
+      "schema": "public",
+      "values": [
+        "BROUILLON",
+        "ENVOYEE",
+        "PAYEE",
+        "ANNULEE"
       ]
     }
   },

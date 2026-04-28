@@ -1,5 +1,5 @@
-import { eq, ilike, and, count } from 'drizzle-orm';
-import { Service, type ServiceCategory } from '@astiell/domain';
+import { eq, and, count } from 'drizzle-orm';
+import { Service, type ServiceCategory, type ServiceNom } from '@astiell/domain';
 import { ok, err, NotFoundError, paginate, type Result, type PaginationInput, type PaginatedResult } from '@astiell/shared';
 import type { IServiceRepository } from '@astiell/domain';
 import type { Database } from '../connection';
@@ -11,36 +11,66 @@ export class DrizzleServiceRepository implements IServiceRepository {
   async findById(id: string): Promise<Result<Service>> {
     const [row] = await this.db.select().from(services).where(eq(services.id, id));
     if (!row) return err(new NotFoundError('Service', id));
-    return ok(Service.reconstitute({ ...row, tarifJournalier: row.tarifJournalier ?? undefined }));
+    return ok(Service.reconstitute({
+      ...row,
+      tarifJournalier: row.tarifJournalier ?? undefined,
+      createdAt: new Date(row.createdAt),
+      updatedAt: new Date(row.updatedAt),
+    }));
   }
 
-  async findByNomAndCategorie(nom: string, categorie: ServiceCategory): Promise<Service | null> {
+  async findByNomAndCategorie(nom: ServiceNom, categorie: ServiceCategory): Promise<Service | null> {
     const [row] = await this.db
       .select()
       .from(services)
-      .where(and(ilike(services.nom, nom.trim()), eq(services.categorie, categorie)));
+      .where(and(eq(services.nom, nom), eq(services.categorie, categorie)));
     if (!row) return null;
-    return Service.reconstitute({ ...row, tarifJournalier: row.tarifJournalier ?? undefined });
+    return Service.reconstitute({
+      ...row,
+      tarifJournalier: row.tarifJournalier ?? undefined,
+      createdAt: new Date(row.createdAt),
+      updatedAt: new Date(row.updatedAt),
+    });
   }
 
   async findByCategorie(categorie: ServiceCategory): Promise<Service[]> {
     const rows = await this.db.select().from(services).where(eq(services.categorie, categorie));
-    return rows.map(row => Service.reconstitute({ ...row, tarifJournalier: row.tarifJournalier ?? undefined }));
+    return rows.map(row => Service.reconstitute({
+      ...row,
+      tarifJournalier: row.tarifJournalier ?? undefined,
+      createdAt: new Date(row.createdAt),
+      updatedAt: new Date(row.updatedAt),
+    }));
   }
 
   async findActifs(): Promise<Service[]> {
     const rows = await this.db.select().from(services).where(eq(services.statut, 'ACTIF'));
-    return rows.map(row => Service.reconstitute({ ...row, tarifJournalier: row.tarifJournalier ?? undefined }));
+    return rows.map(row => Service.reconstitute({
+      ...row,
+      tarifJournalier: row.tarifJournalier ?? undefined,
+      createdAt: new Date(row.createdAt),
+      updatedAt: new Date(row.updatedAt),
+    }));
   }
 
   async findInactifs(): Promise<Service[]> {
     const rows = await this.db.select().from(services).where(eq(services.statut, 'INACTIF'));
-    return rows.map(row => Service.reconstitute({ ...row, tarifJournalier: row.tarifJournalier ?? undefined }));
+    return rows.map(row => Service.reconstitute({
+      ...row,
+      tarifJournalier: row.tarifJournalier ?? undefined,
+      createdAt: new Date(row.createdAt),
+      updatedAt: new Date(row.updatedAt),
+    }));
   }
 
   async findBloques(): Promise<Service[]> {
     const rows = await this.db.select().from(services).where(eq(services.statut, 'BLOQUE'));
-    return rows.map(row => Service.reconstitute({ ...row, tarifJournalier: row.tarifJournalier ?? undefined }));
+    return rows.map(row => Service.reconstitute({
+      ...row,
+      tarifJournalier: row.tarifJournalier ?? undefined,
+      createdAt: new Date(row.createdAt),
+      updatedAt: new Date(row.updatedAt),
+    }));
   }
 
   async findAll(pagination?: PaginationInput): Promise<PaginatedResult<Service>> {
@@ -54,28 +84,44 @@ export class DrizzleServiceRepository implements IServiceRepository {
     ]);
 
     const items = rows.map(row =>
-      Service.reconstitute({ ...row, tarifJournalier: row.tarifJournalier ?? undefined })
+      Service.reconstitute({
+        ...row,
+        tarifJournalier: row.tarifJournalier ?? undefined,
+        createdAt: new Date(row.createdAt),
+        updatedAt: new Date(row.updatedAt),
+      })
     );
 
     return paginate(items, Number(total), { page, limit });
   }
 
   async save(service: Service): Promise<Result<Service>> {
-    const plain = service.toPlain();
+    const values = {
+      id:              service.id,
+      nom:             service.nom,
+      description:     service.description,
+      categorie:       service.categorie,
+      statut:          service.statut,
+      tarifJournalier: service.tarifJournalier,
+      createdAt:       service.createdAt,
+      updatedAt:       service.updatedAt,
+    };
+
     await this.db
       .insert(services)
-      .values(plain)
+      .values(values)
       .onConflictDoUpdate({
         target: services.id,
         set: {
-          nom:             plain.nom,
-          description:     plain.description,
-          categorie:       plain.categorie,
-          statut:          plain.statut,
-          tarifJournalier: plain.tarifJournalier,
+          nom:             values.nom,
+          description:     values.description,
+          categorie:       values.categorie,
+          statut:          values.statut,
+          tarifJournalier: values.tarifJournalier,
           updatedAt:       new Date(),
         },
       });
+
     return ok(service);
   }
 

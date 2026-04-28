@@ -1,4 +1,16 @@
 DO $$ BEGIN
+ CREATE TYPE "public"."service_category" AS ENUM('TIC', 'GENIE_CIVIL', 'LOGISTIQUE', 'COMMERCE', 'FOURNITURE');
+EXCEPTION
+ WHEN duplicate_object THEN null;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+ CREATE TYPE "public"."service_nom" AS ENUM('DEVELOPPEMENT_APP_WEB_MOBILE', 'MAINTENANCE_INFORMATIQUE_BUREAUTIQUE', 'CONNEXION_INTERNET_RESEAUX', 'VIDEOSURVEILLANCE_CCTV', 'CONTROLE_ACCES', 'FOURNITURE_EQUIPEMENTS_INFORMATIQUES', 'FOURNITURE_CONSOMMABLES_TELECOM');
+EXCEPTION
+ WHEN duplicate_object THEN null;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
  CREATE TYPE "public"."service_status" AS ENUM('ACTIF', 'INACTIF', 'BLOQUE');
 EXCEPTION
  WHEN duplicate_object THEN null;
@@ -10,6 +22,20 @@ EXCEPTION
  WHEN duplicate_object THEN null;
 END $$;
 --> statement-breakpoint
+CREATE TABLE IF NOT EXISTS "customers" (
+	"id" varchar(40) PRIMARY KEY NOT NULL,
+	"nom" varchar(100) NOT NULL,
+	"prenom" varchar(100) NOT NULL,
+	"email" varchar(255) NOT NULL,
+	"telephone" varchar(20) NOT NULL,
+	"entreprise" varchar(255),
+	"adresse" text,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
+	CONSTRAINT "customers_email_unique" UNIQUE("email"),
+	CONSTRAINT "customers_telephone_unique" UNIQUE("telephone")
+);
+--> statement-breakpoint
 CREATE TABLE IF NOT EXISTS "projects" (
 	"id" varchar(40) PRIMARY KEY NOT NULL,
 	"title" varchar(255) NOT NULL,
@@ -18,6 +44,17 @@ CREATE TABLE IF NOT EXISTS "projects" (
 	"customer_id" varchar(40) NOT NULL,
 	"start_date" timestamp with time zone NOT NULL,
 	"end_date" timestamp with time zone,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE IF NOT EXISTS "services" (
+	"id" varchar(40) PRIMARY KEY NOT NULL,
+	"nom" "service_nom" NOT NULL,
+	"description" text NOT NULL,
+	"categorie" "service_category" NOT NULL,
+	"tarif_journalier" integer,
+	"statut" "service_status" DEFAULT 'ACTIF' NOT NULL,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
@@ -61,9 +98,3 @@ CREATE TABLE IF NOT EXISTS "invoice_items" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
---> statement-breakpoint
-DROP TABLE "projets";--> statement-breakpoint
-ALTER TABLE "services" ALTER COLUMN "id" SET DATA TYPE varchar(40);--> statement-breakpoint
-ALTER TABLE "services" ALTER COLUMN "id" DROP DEFAULT;--> statement-breakpoint
-ALTER TABLE "services" ADD COLUMN "statut" "service_status" DEFAULT 'ACTIF' NOT NULL;--> statement-breakpoint
-ALTER TABLE "services" DROP COLUMN IF EXISTS "actif";

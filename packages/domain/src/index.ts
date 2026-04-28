@@ -29,7 +29,7 @@ export * from './use-cases/customer/UpdateCustomerUseCase';
 export * from './use-cases/project/CreateProjectUseCase';
 export * from './use-cases/project/GetProjectUseCase';
 export * from './use-cases/project/UpdateProjectUseCase';
-export * from './use-cases/project/DeleteProjectUseCase'; // ✅ ajouté
+export * from './use-cases/project/DeleteProjectUseCase';
 export * from './use-cases/project/CloturerProjectUseCase';
 
 // Use Cases — Service
@@ -37,6 +37,7 @@ export * from './use-cases/service/CreateServiceUseCase';
 export * from './use-cases/service/GetServiceUseCase';
 export * from './use-cases/service/ListServicesUseCase';
 export * from './use-cases/service/UpdateServiceUseCase';
+export * from './use-cases/service/ServiceStatusUseCases'; // ✅ ActiverServiceUseCase, DesactiverServiceUseCase, BloquerServiceUseCase
 
 // Use Cases — ProjectService
 export * from './use-cases/projectService/AddServiceToProjetUseCase';

@@ -5,29 +5,8 @@
     {
       "idx": 0,
       "version": "6",
-      "when": 1775731326349,
-      "tag": "0000_mushy_magik",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "6",
-      "when": 1775770405232,
-      "tag": "0001_huge_longshot",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "6",
-      "when": 1775807724138,
-      "tag": "0002_crazy_bedlam",
-      "breakpoints": true
-    },
-    {
-      "idx": 3,
-      "version": "6",
-      "when": 1776243505502,
-      "tag": "0003_shocking_payback",
+      "when": 1777370474722,
+      "tag": "0000_spooky_zaladane",
       "breakpoints": true
     }
   ]

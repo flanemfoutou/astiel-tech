@@ -1,4 +1,14 @@
 export const serviceTypeDefs = /* GraphQL */ `
+  enum ServiceNom {
+    DEVELOPPEMENT_APP_WEB_MOBILE
+    MAINTENANCE_INFORMATIQUE_BUREAUTIQUE
+    CONNEXION_INTERNET_RESEAUX
+    VIDEOSURVEILLANCE_CCTV
+    CONTROLE_ACCES
+    FOURNITURE_EQUIPEMENTS_INFORMATIQUES
+    FOURNITURE_CONSOMMABLES_TELECOM
+  }
+
   enum ServiceCategory {
     TIC
     GENIE_CIVIL
@@ -15,7 +25,7 @@ export const serviceTypeDefs = /* GraphQL */ `
 
   type Service {
     id: ID!
-    nom: String!
+    nom: ServiceNom!
     description: String!
     categorie: ServiceCategory!
     tarifJournalier: Int
@@ -33,14 +43,14 @@ export const serviceTypeDefs = /* GraphQL */ `
   }
 
   input CreateServiceInput {
-    nom: String!
+    nom: ServiceNom!
     description: String!
     categorie: ServiceCategory!
     tarifJournalier: Int
   }
 
   input UpdateServiceInput {
-    nom: String
+    nom: ServiceNom
     description: String
     categorie: ServiceCategory
     tarifJournalier: Int
