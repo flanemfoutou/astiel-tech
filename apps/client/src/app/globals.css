@@ -1,0 +1,38 @@
+@import "tailwindcss";
+
+:root {
+  --color-background-primary: #ffffff;
+  --color-background-secondary: #F7F6F3;
+  --color-background-tertiary: #F1EFE8;
+  --color-background-info: #E6F1FB;
+  --color-text-primary: #1A1A1A;
+  --color-text-secondary: #5F5E5A;
+  --color-text-tertiary: #888780;
+  --color-text-info: #185FA5;
+  --color-border-tertiary: #E5E4E0;
+  --color-border-secondary: #D1D0CC;
+  --border-radius-md: 6px;
+  --border-radius-lg: 8px;
+}
+
+@theme inline {
+  --color-background-primary: var(--color-background-primary);
+  --color-background-secondary: var(--color-background-secondary);
+  --color-background-tertiary: var(--color-background-tertiary);
+  --color-background-info: var(--color-background-info);
+  --color-text-primary: var(--color-text-primary);
+  --color-text-secondary: var(--color-text-secondary);
+  --color-text-tertiary: var(--color-text-tertiary);
+  --color-text-info: var(--color-text-info);
+  --color-border-tertiary: var(--color-border-tertiary);
+  --color-border-secondary: var(--color-border-secondary);
+  --radius-md: var(--border-radius-md);
+  --radius-lg: var(--border-radius-lg);
+  --font-sans: var(--font-geist-sans);
+}
+
+body {
+  background: var(--color-background-tertiary);
+  color: var(--color-text-primary);
+  font-family: Arial, Helvetica, sans-serif;
+}

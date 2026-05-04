@@ -7,7 +7,9 @@
   ],
   "scripts": {
     "dev": "bun run --cwd apps/api dev",
+    "dev:client": "bun run --cwd apps/client dev",
     "build": "bun run --cwd apps/api build",
+    "build:client": "bun run --cwd apps/client build",
     "start": "bun run --cwd apps/api start",
     "db:generate": "bun run --cwd packages/db generate",
     "db:migrate": "bun run --cwd packages/db migrate",
