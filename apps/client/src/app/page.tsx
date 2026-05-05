@@ -8,6 +8,7 @@ import { AppLayout, StatCard, Panel, StatusPill } from '@/components';
 import { GET_CUSTOMERS } from '@/queries/customer';
 import { GET_PROJECTS } from '@/queries/project';
 import { GET_SERVICES } from '@/queries/service';
+import { LIST_SERVICES_BY_PROJET } from '@/queries/projectService';
 import { GET_INVOICES } from '@/queries/invoice';
 import { Settings, Camera, Lock, Globe, Package, Wrench, Code, Wifi } from 'lucide-react';
 
@@ -35,6 +36,7 @@ export default function Dashboard() {
   const [customers, setCustomers] = useState<any[]>([]);
   const [projects, setProjects] = useState<any[]>([]);
   const [services, setServices] = useState<any[]>([]);
+  const [projectServices, setProjectServices] = useState<any[]>([]);
   const [invoices, setInvoices] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -51,6 +53,19 @@ export default function Dashboard() {
         setProjects(projectsData.listProjects || []);
         setServices(servicesData.listServices?.items || []);
         setInvoices(invoicesData.listInvoices?.items || []);
+
+        if (projectsData.listProjects?.length > 0) {
+          const allProjectServices: any[] = [];
+          for (const proj of projectsData.listProjects.slice(0, 5)) {
+            try {
+              const psData = await request(API_URL, LIST_SERVICES_BY_PROJET, { projetId: proj.id });
+              if (psData.listServicesByProjet) {
+                allProjectServices.push(...psData.listServicesByProjet.map((ps: any) => ({ ...ps, projectTitle: proj.title })));
+              }
+            } catch (e) {}
+          }
+          setProjectServices(allProjectServices);
+        }
       } catch (error) {
         console.error('Error fetching data:', error);
       } finally {
@@ -62,7 +77,7 @@ export default function Dashboard() {
 
   const activeProjects = projects.filter((p: any) => p.status === 'EN_COURS').length;
   const pendingInvoices = invoices.filter((i: any) => i.statut === 'ENVOYEE').length;
-  
+
   const totalRevenue = invoices
     .filter((i: any) => i.statut === 'PAYEE')
     .reduce((sum: number, i: any) => sum + (i.montantTTC || 0), 0);
@@ -76,24 +91,24 @@ export default function Dashboard() {
   return (
     <AppLayout title="Tableau de bord">
       <div className="grid grid-cols-4 gap-3 mb-5">
-        <StatCard 
-          label="Clients actifs" 
-          value={customers.length} 
+        <StatCard
+          label="Clients actifs"
+          value={customers.length}
           badge={{ text: '+3 ce mois', color: 'green' }}
         />
-        <StatCard 
-          label="Projets en cours" 
-          value={activeProjects} 
+        <StatCard
+          label="Projets en cours"
+          value={activeProjects}
           badge={{ text: '2 en attente', color: 'blue' }}
         />
-        <StatCard 
-          label="Factures émises" 
-          value={invoices.length} 
+        <StatCard
+          label="Factures émises"
+          value={invoices.length}
           badge={{ text: `${pendingInvoices} en attente`, color: 'amber' }}
         />
-        <StatCard 
-          label="CA ce mois (FCFA)" 
-          value={formatCurrency(totalRevenue)} 
+        <StatCard
+          label="CA ce mois (FCFA)"
+          value={formatCurrency(totalRevenue)}
           badge={{ text: '+18%', color: 'green' }}
         />
       </div>
@@ -119,9 +134,7 @@ export default function Dashboard() {
             );
           })}
           {services.length === 0 && (
-            <div className="px-4 py-8 text-center text-[13px] text-[#888780]">
-              Aucun service disponible
-            </div>
+            <div className="px-4 py-8 text-center text-[13px] text-[#888780]">Aucun service disponible</div>
           )}
         </Panel>
 
@@ -139,9 +152,7 @@ export default function Dashboard() {
             </div>
           ))}
           {invoices.length === 0 && (
-            <div className="px-4 py-8 text-center text-[13px] text-[#888780]">
-              Aucune facture disponible
-            </div>
+            <div className="px-4 py-8 text-center text-[13px] text-[#888780]">Aucune facture disponible</div>
           )}
         </Panel>
       </div>
@@ -156,9 +167,9 @@ export default function Dashboard() {
               </div>
               <div className="text-[11px] text-[#888780]">{project.customer?.entreprise || `Client #${project.customerId}`}</div>
               <div className="h-1 rounded-full bg-[#E5E4E0] mt-1.5 overflow-hidden">
-                <div 
+                <div
                   className="h-full rounded-full"
-                  style={{ 
+                  style={{
                     width: project.status === 'TERMINE' ? '100%' : project.status === 'EN_COURS' ? '50%' : '0%',
                     backgroundColor: project.status === 'TERMINE' ? '#639922' : project.status === 'EN_ATTENTE' ? '#EF9F27' : '#378ADD'
                   }}
@@ -167,9 +178,37 @@ export default function Dashboard() {
             </div>
           ))}
           {projects.length === 0 && (
-            <div className="px-4 py-8 text-center text-[13px] text-[#888780]">
-              Aucun projet disponible
-            </div>
+            <div className="px-4 py-8 text-center text-[13px] text-[#888780]">Aucun projet disponible</div>
+          )}
+        </Panel>
+
+        <Panel title="Services par projet" link="Voir tout">
+          {projectServices.slice(0, 6).map((ps: any) => {
+            const service = services.find((s: any) => s.id === ps.serviceId);
+            const iconConfig = service
+              ? (serviceIcons[service.nom] || { icon: Settings, bg: 'bg-gray-100', color: 'text-gray-600' })
+              : { icon: Settings, bg: 'bg-gray-100', color: 'text-gray-600' };
+            const Icon = iconConfig.icon;
+            return (
+              <div key={ps.id} className="flex items-center justify-between px-4 py-2.5 border-b border-[#E5E4E0] last:border-b-0">
+                <div className="flex items-center gap-2.5">
+                  <div className={`w-[30px] h-[30px] rounded-md flex items-center justify-center ${iconConfig.bg}`}>
+                    <Icon className={`w-[13px] h-[13px] ${iconConfig.color}`} />
+                  </div>
+                  <div>
+                    <div className="text-[12px] font-medium text-[#1A1A1A]">{service ? (serviceNames[service.nom] || service.nom) : `Service #${ps.serviceId}`}</div>
+                    <div className="text-[11px] text-[#888780]">{ps.projectTitle}</div>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="text-[12px] font-medium text-[#1A1A1A]">{ps.quantite} x {ps.prixUnitaire?.toLocaleString()}</div>
+                  <div className="text-[11px] text-[#888780]">{ps.montantTotal?.toLocaleString()} FCFA</div>
+                </div>
+              </div>
+            );
+          })}
+          {projectServices.length === 0 && (
+            <div className="px-4 py-8 text-center text-[13px] text-[#888780]">Aucun service lié à un projet</div>
           )}
         </Panel>
 
@@ -191,9 +230,7 @@ export default function Dashboard() {
               );
             })}
             {services.length === 0 && (
-              <div className="px-4 py-8 text-center text-[13px] text-[#888780]">
-                Aucune donnée disponible
-              </div>
+              <div className="px-4 py-8 text-center text-[13px] text-[#888780]">Aucune donnée disponible</div>
             )}
           </div>
         </Panel>

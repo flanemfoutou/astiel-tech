@@ -1,5 +1,9 @@
-export const GET_INVOICES = `
-  query GetInvoices($pagination: PaginationInput) {
+// src/queries/invoice.ts
+
+import { gql } from 'graphql-request';
+
+export const GET_INVOICES = gql`
+  query ListInvoices($pagination: PaginationInput) {
     listInvoices(pagination: $pagination) {
       items {
         id
@@ -14,8 +18,6 @@ export const GET_INVOICES = `
         montantTVA
         montantTTC
         notes
-        createdAt
-        updatedAt
       }
       total
       page
@@ -25,61 +27,7 @@ export const GET_INVOICES = `
   }
 `;
 
-export const GET_INVOICE = `
-  query GetInvoice($id: ID!) {
-    getInvoice(id: $id) {
-      id
-      numero
-      projetId
-      customerId
-      statut
-      dateEmission
-      dateEcheance
-      montantHT
-      tauxTVA
-      montantTVA
-      montantTTC
-      notes
-      items {
-        id
-        designation
-        quantite
-        prixUnitaire
-        montantTotal
-      }
-      createdAt
-      updatedAt
-    }
-  }
-`;
-
-export const GET_INVOICES_BY_PROJECT = `
-  query GetInvoicesByProject($projetId: ID!) {
-    listInvoicesByProjet(projetId: $projetId) {
-      id
-      numero
-      statut
-      dateEmission
-      dateEcheance
-      montantTTC
-    }
-  }
-`;
-
-export const GET_INVOICES_BY_CUSTOMER = `
-  query GetInvoicesByCustomer($customerId: ID!) {
-    listInvoicesByCustomer(customerId: $customerId) {
-      id
-      numero
-      statut
-      dateEmission
-      dateEcheance
-      montantTTC
-    }
-  }
-`;
-
-export const CREATE_INVOICE = `
+export const CREATE_INVOICE = gql`
   mutation CreateInvoice($input: CreateInvoiceInput!) {
     createInvoice(input: $input) {
       id
@@ -98,16 +46,17 @@ export const CREATE_INVOICE = `
   }
 `;
 
-export const CHANGER_STATUT_INVOICE = `
+export const CHANGER_STATUT_INVOICE = gql`
   mutation ChangerStatutInvoice($id: ID!, $action: ActionStatut!) {
     changerStatutInvoice(id: $id, action: $action) {
       id
+      numero
       statut
     }
   }
 `;
 
-export const DELETE_INVOICE = `
+export const DELETE_INVOICE = gql`
   mutation DeleteInvoice($id: ID!) {
     deleteInvoice(id: $id)
   }
