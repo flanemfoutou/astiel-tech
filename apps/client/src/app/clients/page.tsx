@@ -76,14 +76,41 @@ export default function ClientsPage() {
     setFormData(initialFormState);
   };
 
+  const formatPhoneNumber = (phone: string) => {
+    const cleaned = phone.replace(/\D/g, '');
+    if (cleaned.startsWith('242')) {
+      return '+' + cleaned;
+    }
+    if (cleaned.startsWith('0')) {
+      return '+242' + cleaned.slice(1);
+    }
+    if (cleaned.length === 9) {
+      return '+242' + cleaned;
+    }
+    return phone;
+  };
+
+  const validatePhone = (phone: string) => {
+    const phoneRegex = /^\+242\d{9}$/;
+    return phoneRegex.test(phone);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    const formattedPhone = formatPhoneNumber(formData.telephone);
+    if (!validatePhone(formattedPhone)) {
+      alert('Numéro de téléphone invalide. Format attendu : +242XXXXXXXXX (9 chiffres après +242)');
+      return;
+    }
+
     setSaving(true);
     try {
+      const input = { ...formData, telephone: formattedPhone };
       if (editingCustomer) {
-        await request(API_URL, UPDATE_CUSTOMER, { id: editingCustomer.id, input: formData });
+        await request(API_URL, UPDATE_CUSTOMER, { id: editingCustomer.id, input });
       } else {
-        await request(API_URL, CREATE_CUSTOMER, { input: formData });
+        await request(API_URL, CREATE_CUSTOMER, { input });
       }
       await fetchCustomers();
       handleCloseModal();
@@ -191,7 +218,7 @@ export default function ClientsPage() {
               <Input type="email" value={formData.email} onChange={(v) => setFormData({...formData, email: v})} required />
             </FormField>
             <FormField label="Téléphone" required>
-              <Input type="tel" value={formData.telephone} onChange={(v) => setFormData({...formData, telephone: v})} required />
+              <Input type="tel" value={formData.telephone} onChange={(v) => setFormData({...formData, telephone: v})} placeholder="+242XXXXXXXXX" required />
             </FormField>
           </div>
           <FormField label="Entreprise">

@@ -115,14 +115,20 @@ export default function ProjetsPage() {
     e.preventDefault();
     setSaving(true);
     try {
-      const input = {
-        ...formData,
-        startDate: formData.startDate || null,
-        endDate: formData.endDate || null,
-      };
       if (editingProject) {
+        const input = {
+          title: formData.title,
+          description: formData.description,
+          status: formData.status,
+          endDate: formData.endDate || null,
+        };
         await request(API_URL, UPDATE_PROJECT, { id: editingProject.id, input });
       } else {
+        const input = {
+          ...formData,
+          startDate: formData.startDate || null,
+          endDate: formData.endDate || null,
+        };
         await request(API_URL, CREATE_PROJECT, { input });
       }
       await fetchData();

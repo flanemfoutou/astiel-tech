@@ -10,7 +10,7 @@ import { GET_PROJECTS } from '@/queries/project';
 import { GET_SERVICES } from '@/queries/service';
 import { LIST_SERVICES_BY_PROJET } from '@/queries/projectService';
 import { GET_INVOICES } from '@/queries/invoice';
-import { Settings, Camera, Lock, Globe, Package, Wrench, Code, Wifi } from 'lucide-react';
+import { Settings, Camera, Lock, Package, Wrench, Code, Wifi } from 'lucide-react';
 
 const serviceIcons: Record<string, { icon: typeof Settings; bg: string; color: string }> = {
   DEVELOPPEMENT_APP_WEB_MOBILE: { icon: Code, bg: 'bg-[#E6F1FB]', color: 'text-[#185FA5]' },
@@ -24,7 +24,7 @@ const serviceIcons: Record<string, { icon: typeof Settings; bg: string; color: s
 const serviceNames: Record<string, string> = {
   DEVELOPPEMENT_APP_WEB_MOBILE: 'Développement web & mobile',
   VIDEOSURVEILLANCE_CCTV: 'Vidéosurveillance (CCTV)',
-  CONTROLE_ACCES: 'Contrôle d\'accès',
+  CONTROLE_ACCES: "Contrôle d'accès",
   CONNEXION_INTERNET_RESEAUX: 'Connexion internet & réseaux',
   FOURNITURE_EQUIPEMENTS_INFORMATIQUES: 'Équipements informatiques',
   MAINTENANCE_INFORMATIQUE_BUREAUTIQUE: 'Maintenance informatique',
@@ -60,7 +60,9 @@ export default function Dashboard() {
             try {
               const psData = await request(API_URL, LIST_SERVICES_BY_PROJET, { projetId: proj.id });
               if (psData.listServicesByProjet) {
-                allProjectServices.push(...psData.listServicesByProjet.map((ps: any) => ({ ...ps, projectTitle: proj.title })));
+                allProjectServices.push(
+                  ...psData.listServicesByProjet.map((ps: any) => ({ ...ps, projectTitle: proj.title }))
+                );
               }
             } catch (e) {}
           }
@@ -114,7 +116,7 @@ export default function Dashboard() {
       </div>
 
       <div className="grid grid-cols-2 gap-4">
-        <Panel title="Services du catalogue" link="Voir tout">
+        <Panel title="Services du catalogue" link="Voir tout" href="/services">
           {services.slice(0, 5).map((service: any) => {
             const iconConfig = serviceIcons[service.nom] || { icon: Settings, bg: 'bg-gray-100', color: 'text-gray-600' };
             const Icon = iconConfig.icon;
@@ -138,7 +140,7 @@ export default function Dashboard() {
           )}
         </Panel>
 
-        <Panel title="Factures récentes" link="Voir tout">
+        <Panel title="Factures récentes" link="Voir tout" href="/factures">
           {invoices.slice(0, 5).map((invoice: any) => (
             <div key={invoice.id} className="flex items-center justify-between px-4 py-2.5 border-b border-[#E5E4E0] last:border-b-0">
               <div>
@@ -158,7 +160,7 @@ export default function Dashboard() {
       </div>
 
       <div className="grid grid-cols-2 gap-4 mt-4">
-        <Panel title="Projets actifs" link="Voir tout">
+        <Panel title="Projets actifs" link="Voir tout" href="/projets">
           {projects.slice(0, 4).map((project: any) => (
             <div key={project.id} className="px-4 py-2.5 border-b border-[#E5E4E0] last:border-b-0">
               <div className="flex justify-between items-center">
@@ -171,7 +173,7 @@ export default function Dashboard() {
                   className="h-full rounded-full"
                   style={{
                     width: project.status === 'TERMINE' ? '100%' : project.status === 'EN_COURS' ? '50%' : '0%',
-                    backgroundColor: project.status === 'TERMINE' ? '#639922' : project.status === 'EN_ATTENTE' ? '#EF9F27' : '#378ADD'
+                    backgroundColor: project.status === 'TERMINE' ? '#639922' : project.status === 'EN_ATTENTE' ? '#EF9F27' : '#378ADD',
                   }}
                 />
               </div>
@@ -182,11 +184,11 @@ export default function Dashboard() {
           )}
         </Panel>
 
-        <Panel title="Services par projet" link="Voir tout">
+        <Panel title="Services par projet" link="Voir tout" href="/projets">
           {projectServices.slice(0, 6).map((ps: any) => {
             const service = services.find((s: any) => s.id === ps.serviceId);
             const iconConfig = service
-              ? (serviceIcons[service.nom] || { icon: Settings, bg: 'bg-gray-100', color: 'text-gray-600' })
+              ? serviceIcons[service.nom] || { icon: Settings, bg: 'bg-gray-100', color: 'text-gray-600' }
               : { icon: Settings, bg: 'bg-gray-100', color: 'text-gray-600' };
             const Icon = iconConfig.icon;
             return (
@@ -196,7 +198,9 @@ export default function Dashboard() {
                     <Icon className={`w-[13px] h-[13px] ${iconConfig.color}`} />
                   </div>
                   <div>
-                    <div className="text-[12px] font-medium text-[#1A1A1A]">{service ? (serviceNames[service.nom] || service.nom) : `Service #${ps.serviceId}`}</div>
+                    <div className="text-[12px] font-medium text-[#1A1A1A]">
+                      {service ? serviceNames[service.nom] || service.nom : `Service #${ps.serviceId}`}
+                    </div>
                     <div className="text-[11px] text-[#888780]">{ps.projectTitle}</div>
                   </div>
                 </div>
@@ -212,7 +216,7 @@ export default function Dashboard() {
           )}
         </Panel>
 
-        <Panel title="Revenus par service" link="Détail">
+        <Panel title="Revenus par service" link="Détail" href="/services">
           <div className="py-2">
             {services.slice(0, 6).map((service: any, index: number) => {
               const colors = ['bg-[#378ADD]', 'bg-[#1D9E75]', 'bg-[#7F77DD]', 'bg-[#EF9F27]', 'bg-[#D85A30]', 'bg-[#888780]'];
