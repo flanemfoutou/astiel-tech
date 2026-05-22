@@ -1,5 +1,3 @@
-// src/queries/invoice.ts
-
 import { gql } from 'graphql-request';
 
 export const GET_INVOICES = gql`
@@ -8,6 +6,9 @@ export const GET_INVOICES = gql`
       items {
         id
         numero
+        reference
+        idClient
+        description
         projetId
         customerId
         statut
@@ -32,6 +33,9 @@ export const CREATE_INVOICE = gql`
     createInvoice(input: $input) {
       id
       numero
+      reference
+      idClient
+      description
       projetId
       customerId
       statut

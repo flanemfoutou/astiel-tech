@@ -12,6 +12,9 @@ export type InvoiceStatus = keyof typeof INVOICE_STATUS;
 export interface InvoiceProps {
   id: Id;
   numero: string;
+  reference?: string;
+  idClient?: string;
+  description?: string;
   projetId: string;
   customerId: string;
   statut: InvoiceStatus;
@@ -61,6 +64,9 @@ export class Invoice {
 
   get id() { return this.props.id; }
   get numero() { return this.props.numero; }
+  get reference() { return this.props.reference; }
+  get idClient() { return this.props.idClient; }
+  get description() { return this.props.description; }
   get projetId() { return this.props.projetId; }
   get customerId() { return this.props.customerId; }
   get statut() { return this.props.statut; }
@@ -75,34 +81,25 @@ export class Invoice {
   get updatedAt() { return this.props.updatedAt; }
 
   marquerEnvoyee(): Invoice {
-    if (this.props.statut !== 'BROUILLON') {
-      throw new Error('Seul un brouillon peut être envoyé');
-    }
+    if (this.props.statut !== 'BROUILLON') throw new Error('Seul un brouillon peut être envoyé');
     return new Invoice({ ...this.props, statut: 'ENVOYEE', updatedAt: new Date() });
   }
 
   marquerPayee(): Invoice {
-    if (this.props.statut !== 'ENVOYEE') {
-      throw new Error('Seule une facture envoyée peut être marquée payée');
-    }
+    if (this.props.statut !== 'ENVOYEE') throw new Error('Seule une facture envoyée peut être marquée payée');
     return new Invoice({ ...this.props, statut: 'PAYEE', updatedAt: new Date() });
   }
 
   annuler(): Invoice {
-    if (this.props.statut === 'PAYEE') {
-      throw new Error('Une facture payée ne peut pas être annulée');
-    }
+    if (this.props.statut === 'PAYEE') throw new Error('Une facture payée ne peut pas être annulée');
     return new Invoice({ ...this.props, statut: 'ANNULEE', updatedAt: new Date() });
   }
 
   recalculer(montantHT: number): Invoice {
     const montantTVA = montantHT * (this.props.tauxTVA / 100);
     return new Invoice({
-      ...this.props,
-      montantHT,
-      montantTVA,
-      montantTTC: montantHT + montantTVA,
-      updatedAt: new Date(),
+      ...this.props, montantHT, montantTVA,
+      montantTTC: montantHT + montantTVA, updatedAt: new Date(),
     });
   }
 

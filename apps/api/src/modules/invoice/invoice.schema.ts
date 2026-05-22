@@ -26,6 +26,9 @@ export const invoiceTypeDefs = /* GraphQL */ `
   type Invoice {
     id: ID!
     numero: String!
+    reference: String
+    idClient: String
+    description: String
     projetId: ID!
     customerId: ID!
     statut: InvoiceStatus!
@@ -55,6 +58,9 @@ export const invoiceTypeDefs = /* GraphQL */ `
     dateEcheance: String!
     tauxTVA: Float!
     notes: String
+    reference: String
+    idClient: String
+    description: String
   }
 
   extend type Query {

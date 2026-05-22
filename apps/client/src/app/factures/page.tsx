@@ -58,7 +58,8 @@ const AsTiellLogo = () => (
 const GET_INVOICE_DETAIL = gql`
   query GetInvoice($id: ID!) {
     getInvoice(id: $id) {
-      id numero projetId customerId statut
+      id numero reference idClient description
+      projetId customerId statut
       dateEmission dateEcheance montantHT tauxTVA montantTVA montantTTC notes
       items {
         id designation quantite prixUnitaire montantTotal projectServiceId
@@ -74,6 +75,7 @@ const serviceNames: Record<string, string> = {
   CONNEXION_INTERNET_RESEAUX: 'Connexion internet & réseaux',
   FOURNITURE_EQUIPEMENTS_INFORMATIQUES: 'Équipements informatiques',
   MAINTENANCE_INFORMATIQUE_BUREAUTIQUE: 'Maintenance informatique',
+  FOURNITURE_CONSOMMABLES_TELECOM: 'Fourniture consommables télécom',
 };
 
 const statutLabels: Record<string, string> = {
@@ -87,7 +89,46 @@ const statutColors: Record<string, { bg: string; color: string }> = {
   ANNULEE: { bg: '#FCEBEB', color: '#A32D2D' },
 };
 
-const initialStep1 = { projetId: '', customerId: '', dateEcheance: '', tauxTVA: 18, notes: '' };
+// Convertit un montant en lettres (FCFA)
+function montantEnLettres(montant: number): string {
+  const units = ['', 'un', 'deux', 'trois', 'quatre', 'cinq', 'six', 'sept', 'huit', 'neuf',
+    'dix', 'onze', 'douze', 'treize', 'quatorze', 'quinze', 'seize', 'dix-sept', 'dix-huit', 'dix-neuf'];
+  const tens = ['', '', 'vingt', 'trente', 'quarante', 'cinquante', 'soixante', 'soixante', 'quatre-vingt', 'quatre-vingt'];
+
+  if (montant === 0) return 'zéro franc CFA';
+
+  function convertGroup(n: number): string {
+    if (n === 0) return '';
+    if (n < 20) return units[n];
+    if (n < 100) {
+      const t = Math.floor(n / 10);
+      const u = n % 10;
+      if (t === 7) return 'soixante-' + units[10 + u];
+      if (t === 9) return 'quatre-vingt-' + (u === 0 ? '' : units[u]);
+      return tens[t] + (u === 1 && t !== 8 ? '-et-un' : u === 0 ? '' : '-' + units[u]);
+    }
+    const h = Math.floor(n / 100);
+    const r = n % 100;
+    const centStr = h === 1 ? 'cent' : units[h] + ' cent';
+    return centStr + (r === 0 ? '' : ' ' + convertGroup(r));
+  }
+
+  const millions = Math.floor(montant / 1000000);
+  const milliers = Math.floor((montant % 1000000) / 1000);
+  const reste = montant % 1000;
+
+  let result = '';
+  if (millions > 0) result += convertGroup(millions) + (millions === 1 ? ' million ' : ' millions ');
+  if (milliers > 0) result += (milliers === 1 ? 'mille ' : convertGroup(milliers) + ' mille ');
+  if (reste > 0) result += convertGroup(reste);
+
+  return result.trim().charAt(0).toUpperCase() + result.trim().slice(1) + ' francs CFA';
+}
+
+const initialStep1 = {
+  projetId: '', customerId: '', dateEcheance: '', tauxTVA: 18, notes: '',
+  reference: '', idClient: '', description: '',
+};
 
 type LignePreview = {
   id: string; serviceId: string; designation: string;
@@ -212,8 +253,7 @@ export default function FacturesPage() {
       const svcs: any[] = data.listServicesByProjet || [];
       if (svcs.length === 0) {
         setLignesError("Ce projet n'a aucun service configuré. Ajoutez des services au projet avant de créer une facture.");
-        setLoadingLignes(false);
-        return;
+        setLoadingLignes(false); return;
       }
       setLignes(svcs.map((ps: any) => {
         const service = services.find((s: any) => s.id === ps.serviceId);
@@ -225,11 +265,8 @@ export default function FacturesPage() {
         };
       }));
       setStep(2);
-    } catch {
-      setLignesError('Erreur lors du chargement des services du projet.');
-    } finally {
-      setLoadingLignes(false);
-    }
+    } catch { setLignesError('Erreur lors du chargement des services du projet.'); }
+    finally { setLoadingLignes(false); }
   };
 
   const handleLigneChange = (index: number, field: 'quantite' | 'prixUnitaire' | 'designation', value: string) => {
@@ -249,6 +286,9 @@ export default function FacturesPage() {
           projetId: step1.projetId, customerId: step1.customerId,
           dateEcheance: step1.dateEcheance, tauxTVA: Number(step1.tauxTVA),
           notes: step1.notes || null,
+          reference: step1.reference || null,
+          idClient: step1.idClient || null,
+          description: step1.description || null,
         }
       });
       await fetchData(); handleCloseModal();
@@ -280,11 +320,11 @@ export default function FacturesPage() {
     try {
       const data: any = await request(API_URL, GET_INVOICE_DETAIL, { id: invoice.id });
       setPrintItems(data.getInvoice?.items || []);
+      setInvoiceToPrint(data.getInvoice);
     } catch (error) { console.error('Erreur chargement détail:', error); }
     finally { setLoadingPrint(false); }
   };
 
-  // ─── Export PDF ───────────────────────────────────────────
   const handleExportPDF = async () => {
     if (!invoiceToPrint) return;
     setExportingPdf(true);
@@ -301,22 +341,20 @@ export default function FacturesPage() {
       const imgHeight = (canvas.height * pageWidth) / canvas.width;
       pdf.addImage(imgData, 'PNG', 0, 0, pageWidth, imgHeight > pageHeight ? pageHeight : imgHeight);
       pdf.save(`${invoiceToPrint.numero}.pdf`);
-    } catch (error) {
-      console.error('Erreur export PDF:', error);
-    } finally {
-      setExportingPdf(false);
-    }
+    } catch (error) { console.error('Erreur export PDF:', error); }
+    finally { setExportingPdf(false); }
   };
 
-  // ─── Export Excel ─────────────────────────────────────────
   const handleExportExcel = async () => {
     if (!invoiceToPrint || printItems.length === 0) return;
     try {
       const XLSX = await import('xlsx');
       const client = getCustomer(invoiceToPrint.customerId);
-
       const infoData = [
         ['FACTURE', invoiceToPrint.numero],
+        ['Référence', invoiceToPrint.reference || ''],
+        ['ID Client', invoiceToPrint.idClient || ''],
+        ['Description', invoiceToPrint.description || ''],
         ['Statut', statutLabels[invoiceToPrint.statut] || invoiceToPrint.statut],
         ['Date émission', formatDate(invoiceToPrint.dateEmission)],
         ['Date échéance', formatDate(invoiceToPrint.dateEcheance)],
@@ -333,88 +371,74 @@ export default function FacturesPage() {
         ['Entreprise', client?.entreprise || ''],
         ['Projet', getProjectName(invoiceToPrint.projetId)],
       ];
-
       const lignesData = [
-        ['Désignation', 'Quantité', 'Prix unitaire (FCFA)', 'Total (FCFA)'],
-        ...printItems.map((item: any) => [
-          resolveDesignation(item),
-          item.quantite,
-          item.prixUnitaire,
-          item.montantTotal,
+        ['N°', 'Désignation', 'Unité', 'Quantité', 'Prix unit. (FCFA)', 'Total (FCFA)'],
+        ...printItems.map((item: any, i: number) => [
+          i + 1, resolveDesignation(item), 'Pièce',
+          item.quantite, item.prixUnitaire, item.montantTotal,
         ]),
         [],
-        ['', '', 'Montant HT', invoiceToPrint.montantHT],
-        ['', '', `TVA (${invoiceToPrint.tauxTVA}%)`, invoiceToPrint.montantTVA],
-        ['', '', 'Total TTC', invoiceToPrint.montantTTC],
+        ['', '', '', '', 'Montant HT', invoiceToPrint.montantHT],
+        ['', '', '', '', `TVA (${invoiceToPrint.tauxTVA}%)`, invoiceToPrint.montantTVA],
+        ['', '', '', '', 'Total TTC', invoiceToPrint.montantTTC],
       ];
-
       const wb = XLSX.utils.book_new();
       const wsInfo = XLSX.utils.aoa_to_sheet(infoData);
       const wsLignes = XLSX.utils.aoa_to_sheet(lignesData);
       wsInfo['!cols'] = [{ wch: 20 }, { wch: 55 }];
-      wsLignes['!cols'] = [{ wch: 40 }, { wch: 10 }, { wch: 22 }, { wch: 18 }];
+      wsLignes['!cols'] = [{ wch: 5 }, { wch: 40 }, { wch: 12 }, { wch: 10 }, { wch: 22 }, { wch: 18 }];
       XLSX.utils.book_append_sheet(wb, wsInfo, 'Informations');
       XLSX.utils.book_append_sheet(wb, wsLignes, 'Lignes');
       XLSX.writeFile(wb, `${invoiceToPrint.numero}.xlsx`);
-    } catch (error) {
-      console.error('Erreur export Excel:', error);
-    }
+    } catch (error) { console.error('Erreur export Excel:', error); }
   };
 
-  // ─── Export CSV ───────────────────────────────────────────
   const handleExportCSV = () => {
     if (!invoiceToPrint || printItems.length === 0) return;
     const client = getCustomer(invoiceToPrint.customerId);
     const rows = [
       ['Facture', invoiceToPrint.numero],
+      ['Référence', invoiceToPrint.reference || ''],
+      ['ID Client', invoiceToPrint.idClient || ''],
+      ['Description', invoiceToPrint.description || ''],
       ['Statut', statutLabels[invoiceToPrint.statut] || invoiceToPrint.statut],
       ['Date émission', formatDate(invoiceToPrint.dateEmission)],
       ['Date échéance', formatDate(invoiceToPrint.dateEcheance)],
       ['Client', client?.nomComplet || invoiceToPrint.customerId],
-      ['Entreprise client', client?.entreprise || ''],
       ['Projet', getProjectName(invoiceToPrint.projetId)],
-      ['Émetteur', ENTREPRISE.nom],
       [],
-      ['Désignation', 'Quantité', 'Prix unitaire (FCFA)', 'Total (FCFA)'],
-      ...printItems.map((item: any) => [
-        resolveDesignation(item),
-        item.quantite,
-        item.prixUnitaire,
-        item.montantTotal,
+      ['N°', 'Désignation', 'Unité', 'Quantité', 'Prix unitaire (FCFA)', 'Total (FCFA)'],
+      ...printItems.map((item: any, i: number) => [
+        i + 1, resolveDesignation(item), 'Pièce',
+        item.quantite, item.prixUnitaire, item.montantTotal,
       ]),
       [],
-      ['', '', 'Montant HT', invoiceToPrint.montantHT],
-      ['', '', `TVA (${invoiceToPrint.tauxTVA}%)`, invoiceToPrint.montantTVA],
-      ['', '', 'Total TTC', invoiceToPrint.montantTTC],
+      ['', '', '', '', 'Montant HT', invoiceToPrint.montantHT],
+      ['', '', '', '', `TVA (${invoiceToPrint.tauxTVA}%)`, invoiceToPrint.montantTVA],
+      ['', '', '', '', 'Total TTC', invoiceToPrint.montantTTC],
     ];
-
     const csvContent = rows
       .map(row => row.map((cell: any) => `"${String(cell ?? '').replace(/"/g, '""')}"`).join(';'))
       .join('\n');
-
     const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
-    link.href = url;
-    link.download = `${invoiceToPrint.numero}.csv`;
-    link.click();
-    URL.revokeObjectURL(url);
+    link.href = url; link.download = `${invoiceToPrint.numero}.csv`;
+    link.click(); URL.revokeObjectURL(url);
   };
 
   const { montantHT, montantTVA, montantTTC } = calculTotaux();
 
   return (
     <AppLayout title="Factures">
-
       <style>{`
         @media print {
           body * { visibility: hidden !important; }
           #print-area, #print-area * { visibility: visible !important; }
           #print-area {
-            position: fixed !important;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: white; z-index: 9999;
-            padding: 32px 40px; box-sizing: border-box; font-size: 12px;
+            position: fixed !important; top: 0; left: 0;
+            width: 100%; height: 100%; background: white;
+            z-index: 9999; padding: 24px 32px; box-sizing: border-box; font-size: 11px;
           }
         }
       `}</style>
@@ -451,11 +475,15 @@ export default function FacturesPage() {
                     <div>
                       <div className="flex items-center gap-2">
                         <span className="text-sm font-medium text-[#1A1A1A]">{invoice.numero}</span>
+                        {invoice.reference && <span className="text-xs text-[#888780]">• {invoice.reference}</span>}
                         <StatusPill status={invoice.statut} />
                       </div>
                       <div className="text-xs text-[#888780]">
                         {getCustomerName(invoice.customerId)} • {getProjectName(invoice.projetId)} • Échéance : {formatDate(invoice.dateEcheance)}
                       </div>
+                      {invoice.description && (
+                        <div className="text-xs text-[#5F5E5A] italic">{invoice.description}</div>
+                      )}
                     </div>
                   </div>
                   <div className="flex items-center gap-6">
@@ -470,13 +498,11 @@ export default function FacturesPage() {
                           <a.icon className={`w-3.5 h-3.5 ${a.color}`} />
                         </Button>
                       ))}
-                      <Button variant="secondary" size="sm" title="Aperçu / Exporter"
-                        onClick={() => handlePrint(invoice)}>
+                      <Button variant="secondary" size="sm" title="Aperçu / Exporter" onClick={() => handlePrint(invoice)}>
                         <Printer className="w-3.5 h-3.5 text-[#5F5E5A]" />
                       </Button>
                       <div className="opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Button variant="danger" size="sm"
-                          onClick={() => { setInvoiceToDelete(invoice); setIsDeleteOpen(true); }}>
+                        <Button variant="danger" size="sm" onClick={() => { setInvoiceToDelete(invoice); setIsDeleteOpen(true); }}>
                           <Trash2 className="w-3.5 h-3.5" />
                         </Button>
                       </div>
@@ -490,144 +516,208 @@ export default function FacturesPage() {
       </Panel>
 
       {/* ── Modal Aperçu / Export ── */}
-      <Modal isOpen={isPrintModalOpen} onClose={() => setIsPrintModalOpen(false)}
-        title="Aperçu de la facture" size="lg">
+      <Modal isOpen={isPrintModalOpen} onClose={() => setIsPrintModalOpen(false)} title="Aperçu de la facture" size="lg">
         {loadingPrint ? (
           <div className="flex justify-center py-12"><LoadingSpinner /></div>
         ) : invoiceToPrint && (
           <>
-            <div id="print-area" className="bg-white text-[#1A1A1A] font-sans text-sm">
+            <div id="print-area" className="bg-white text-[#1A1A1A] font-sans text-xs">
 
               {/* En-tête */}
-              <div className="flex justify-between items-start pb-4 mb-5" style={{ borderBottom: '3px solid #1B2A6B' }}>
+              <div className="flex justify-between items-start pb-3 mb-4" style={{ borderBottom: '3px solid #1B2A6B' }}>
                 <div className="flex items-center gap-3">
                   <AsTiellLogo />
                   <div className="max-w-xs">
-                    <div className="text-xs font-semibold uppercase tracking-wide mb-1" style={{ color: '#1B9AA0' }}>
-                      Ingénierie des TIC
-                    </div>
+                    <div className="text-xs font-semibold uppercase tracking-wide mb-1" style={{ color: '#1B9AA0' }}>Ingénierie des TIC</div>
                     <div className="text-xs leading-tight text-[#5F5E5A]">{ENTREPRISE.activite}</div>
                   </div>
                 </div>
                 <div className="text-right">
-                  <div className="text-3xl font-bold tracking-widest" style={{ color: '#1B2A6B' }}>FACTURE</div>
-                  <div className="text-base font-bold mt-1" style={{ color: '#1B9AA0' }}>{invoiceToPrint.numero}</div>
-                  <div className="text-xs text-[#888780] mt-1">Émise le : {formatDate(invoiceToPrint.dateEmission)}</div>
-                  <div className="text-xs text-[#888780]">Échéance : {formatDate(invoiceToPrint.dateEcheance)}</div>
+                  <div className="text-2xl font-bold tracking-widest" style={{ color: '#1B2A6B' }}>FACTURE</div>
+                  <div className="mt-2 border border-dashed border-[#1B2A6B] rounded px-3 py-2 text-right">
+                    <div className="text-xs font-bold" style={{ color: '#1B2A6B' }}>
+                      N° : {invoiceToPrint.reference || invoiceToPrint.numero}
+                    </div>
+                    <div className="text-xs text-[#5F5E5A]">Date : {formatDate(invoiceToPrint.dateEmission)}</div>
+                  </div>
                   <div className="mt-2 inline-block px-3 py-0.5 rounded-full text-xs font-semibold"
-                    style={{
-                      backgroundColor: statutColors[invoiceToPrint.statut]?.bg || '#F7F6F3',
-                      color: statutColors[invoiceToPrint.statut]?.color || '#5F5E5A',
-                    }}>
-                    {statutLabels[invoiceToPrint.statut] || invoiceToPrint.statut}
+                    style={{ backgroundColor: statutColors[invoiceToPrint.statut]?.bg, color: statutColors[invoiceToPrint.statut]?.color }}>
+                    {statutLabels[invoiceToPrint.statut]}
                   </div>
                 </div>
               </div>
 
-              {/* Émetteur + Client */}
-              <div className="grid grid-cols-2 gap-4 mb-6">
-                <div className="rounded-md p-3" style={{ backgroundColor: '#F0F4FF', border: '1px solid #1B2A6B22' }}>
-                  <div className="text-xs font-bold uppercase mb-2" style={{ color: '#1B2A6B' }}>Émetteur</div>
-                  <div className="font-bold text-sm" style={{ color: '#1B2A6B' }}>{ENTREPRISE.nom}</div>
-                  <div className="text-xs mt-1 leading-relaxed text-[#5F5E5A]">
-                    {ENTREPRISE.adresse}<br />Tél : {ENTREPRISE.telephone}<br />{ENTREPRISE.email}
-                  </div>
-                </div>
-                <div className="rounded-md p-3" style={{ backgroundColor: '#F0FAFA', border: '1px solid #1B9AA022' }}>
-                  <div className="text-xs font-bold uppercase mb-2" style={{ color: '#1B9AA0' }}>Facturé à</div>
-                  {(() => {
-                    const client = getCustomer(invoiceToPrint.customerId);
-                    return (
-                      <div className="text-xs leading-relaxed text-[#5F5E5A]">
-                        <div className="font-bold text-sm text-[#1A1A1A]">{client?.nomComplet || `Client #${invoiceToPrint.customerId}`}</div>
-                        {client?.entreprise && <div>{client.entreprise}</div>}
-                        {client?.email && <div>{client.email}</div>}
-                        {client?.telephone && <div>{client.telephone}</div>}
-                        <div className="mt-1 font-semibold" style={{ color: '#1B2A6B' }}>
-                          Projet : {getProjectName(invoiceToPrint.projetId)}
+              {/* Bloc client */}
+              <div className="border border-dashed rounded p-3 mb-4" style={{ borderColor: '#1B9AA0' }}>
+                {(() => {
+                  const client = getCustomer(invoiceToPrint.customerId);
+                  return (
+                    <div className="grid grid-cols-3 gap-2 text-xs">
+                      <div>
+                        <span className="font-bold" style={{ color: '#1B9AA0' }}>CLIENT : </span>
+                        <span className="font-bold text-[#1A1A1A]">{client?.nomComplet || invoiceToPrint.customerId}</span>
+                        {client?.entreprise && <div className="text-[#5F5E5A]">{client.entreprise}</div>}
+                        {client?.adresse && <div className="text-[#5F5E5A]">{client.adresse}</div>}
+                      </div>
+                      <div>
+                        {invoiceToPrint.description && (
+                          <>
+                            <span className="font-bold" style={{ color: '#1B9AA0' }}>DESCRIPTION : </span>
+                            <span className="text-[#5F5E5A] italic">{invoiceToPrint.description}</span>
+                          </>
+                        )}
+                      </div>
+                      <div>
+                        {invoiceToPrint.idClient && (
+                          <>
+                            <span className="font-bold" style={{ color: '#1B9AA0' }}>ID Client : </span>
+                            <span className="text-[#5F5E5A]">{invoiceToPrint.idClient}</span>
+                          </>
+                        )}
+                        <div className="mt-1">
+                          <span className="font-bold" style={{ color: '#1B9AA0' }}>Projet : </span>
+                          <span className="text-[#5F5E5A]">{getProjectName(invoiceToPrint.projetId)}</span>
+                        </div>
+                        <div>
+                          <span className="font-bold" style={{ color: '#1B9AA0' }}>Échéance : </span>
+                          <span className="text-[#5F5E5A]">{formatDate(invoiceToPrint.dateEcheance)}</span>
                         </div>
                       </div>
-                    );
-                  })()}
-                </div>
+                    </div>
+                  );
+                })()}
               </div>
 
-              {/* Tableau */}
-              <table className="w-full text-sm mb-6" style={{ borderCollapse: 'collapse' }}>
+              {/* Tableau lignes */}
+              <table className="w-full mb-4" style={{ borderCollapse: 'collapse', fontSize: '11px' }}>
                 <thead>
                   <tr style={{ backgroundColor: '#1B2A6B', color: 'white' }}>
-                    <th className="text-left px-4 py-2.5 text-xs font-semibold">Désignation</th>
-                    <th className="text-right px-4 py-2.5 text-xs font-semibold" style={{ width: 60 }}>Qté</th>
-                    <th className="text-right px-4 py-2.5 text-xs font-semibold" style={{ width: 140 }}>Prix unit. (FCFA)</th>
-                    <th className="text-right px-4 py-2.5 text-xs font-semibold" style={{ width: 140 }}>Total (FCFA)</th>
+                    <th className="text-center px-2 py-2 font-semibold" style={{ width: 30 }}>Num</th>
+                    <th className="text-left px-3 py-2 font-semibold">Fourniture / Service</th>
+                    <th className="text-center px-2 py-2 font-semibold" style={{ width: 80 }}>Unité</th>
+                    <th className="text-center px-2 py-2 font-semibold" style={{ width: 60 }}>Qté</th>
+                    <th className="text-right px-2 py-2 font-semibold" style={{ width: 100 }}>P U</th>
+                    <th className="text-right px-2 py-2 font-semibold" style={{ width: 110 }}>P T</th>
                   </tr>
                 </thead>
                 <tbody>
                   {printItems.map((item: any, index: number) => (
                     <tr key={item.id} style={{ backgroundColor: index % 2 === 0 ? '#ffffff' : '#F0F4FF' }}>
-                      <td className="px-4 py-2.5" style={{ borderBottom: '1px solid #E5E4E0' }}>{resolveDesignation(item)}</td>
-                      <td className="px-4 py-2.5 text-right" style={{ borderBottom: '1px solid #E5E4E0' }}>{item.quantite}</td>
-                      <td className="px-4 py-2.5 text-right" style={{ borderBottom: '1px solid #E5E4E0' }}>{item.prixUnitaire?.toLocaleString('fr-FR')}</td>
-                      <td className="px-4 py-2.5 text-right font-semibold" style={{ borderBottom: '1px solid #E5E4E0' }}>{item.montantTotal?.toLocaleString('fr-FR')}</td>
+                      <td className="text-center px-2 py-1.5 text-[#5F5E5A]" style={{ borderBottom: '1px solid #E5E4E0' }}>{index + 1}</td>
+                      <td className="px-3 py-1.5 text-[#1A1A1A]" style={{ borderBottom: '1px solid #E5E4E0' }}>{resolveDesignation(item)}</td>
+                      <td className="text-center px-2 py-1.5 text-[#5F5E5A]" style={{ borderBottom: '1px solid #E5E4E0' }}>Pièce</td>
+                      <td className="text-center px-2 py-1.5 text-[#1A1A1A]" style={{ borderBottom: '1px solid #E5E4E0' }}>{item.quantite}</td>
+                      <td className="text-right px-2 py-1.5 text-[#1A1A1A]" style={{ borderBottom: '1px solid #E5E4E0' }}>{item.prixUnitaire?.toLocaleString('fr-FR')},00</td>
+                      <td className="text-right px-2 py-1.5 font-medium text-[#1A1A1A]" style={{ borderBottom: '1px solid #E5E4E0' }}>{item.montantTotal?.toLocaleString('fr-FR')},00</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
 
               {/* Totaux */}
-              <div className="flex justify-end mb-6">
-                <div style={{ width: 280 }}>
-                  <div className="flex justify-between py-2 text-sm text-[#5F5E5A]" style={{ borderTop: '1px solid #E5E4E0' }}>
-                    <span>Montant HT</span><span>{invoiceToPrint.montantHT?.toLocaleString('fr-FR')} FCFA</span>
+              <div className="flex justify-end mb-4">
+                <div style={{ width: 300 }}>
+                  <div className="flex justify-between py-1.5 text-xs" style={{ borderTop: '1px solid #E5E4E0' }}>
+                    <span className="font-semibold text-[#5F5E5A]">Total HT</span>
+                    <span className="font-bold text-[#1A1A1A]">{invoiceToPrint.montantHT?.toLocaleString('fr-FR')},00</span>
                   </div>
-                  <div className="flex justify-between py-2 text-sm text-[#5F5E5A]" style={{ borderTop: '1px solid #E5E4E0' }}>
-                    <span>TVA ({invoiceToPrint.tauxTVA}%)</span><span>{invoiceToPrint.montantTVA?.toLocaleString('fr-FR')} FCFA</span>
+                  <div className="flex justify-between py-1.5 text-xs" style={{ borderTop: '1px solid #E5E4E0' }}>
+                    <span className="text-[#5F5E5A]">TVA {invoiceToPrint.tauxTVA}%</span>
+                    <span className="text-[#5F5E5A]">{invoiceToPrint.montantTVA > 0 ? `${invoiceToPrint.montantTVA?.toLocaleString('fr-FR')},00` : '/'}</span>
                   </div>
-                  <div className="flex justify-between py-2.5 px-3 text-sm font-bold text-white rounded-md mt-1"
+                  <div className="flex justify-between py-1.5 text-xs" style={{ borderTop: '1px solid #E5E4E0' }}>
+                    <span className="text-[#5F5E5A]">CA 5%</span>
+                    <span className="text-[#5F5E5A]">/</span>
+                  </div>
+                  <div className="flex justify-between py-2 px-3 text-sm font-bold text-white rounded-md mt-1"
                     style={{ backgroundColor: '#1B2A6B' }}>
-                    <span>Total TTC</span><span>{invoiceToPrint.montantTTC?.toLocaleString('fr-FR')} FCFA</span>
+                    <span>TOTAL TTC</span>
+                    <span>{invoiceToPrint.montantTTC?.toLocaleString('fr-FR')},00</span>
                   </div>
                 </div>
+              </div>
+
+              {/* Montant en lettres */}
+              <div className="mb-4 px-3 py-2 rounded text-xs italic" style={{ border: '1px solid #1B9AA0', color: '#1B2A6B' }}>
+                Arrêté la présente FACTURE en Hors Taxes à la somme de{' '}
+                <strong>{montantEnLettres(invoiceToPrint.montantHT)}</strong>
               </div>
 
               {/* Notes */}
               {invoiceToPrint.notes && (
-                <div className="rounded-md p-3 mb-5" style={{ border: '1px solid #E5E4E0', backgroundColor: '#FAFAFA' }}>
-                  <div className="text-xs font-bold uppercase mb-1 text-[#888780]">Notes</div>
-                  <p className="text-sm text-[#5F5E5A]">{invoiceToPrint.notes}</p>
+                <div className="rounded p-2 mb-4 text-xs" style={{ border: '1px solid #E5E4E0', backgroundColor: '#FAFAFA' }}>
+                  <span className="font-bold text-[#888780]">Notes : </span>
+                  <span className="text-[#5F5E5A]">{invoiceToPrint.notes}</span>
                 </div>
               )}
 
+              {/* Conditions + Signatures */}
+              <div className="grid grid-cols-2 gap-4 mb-4">
+                <div className="border border-dashed rounded p-3 text-xs" style={{ borderColor: '#1B2A6B' }}>
+                  <div className="font-bold mb-1" style={{ color: '#1B9AA0' }}>**Conditions :</div>
+                  <div className="text-[#5F5E5A] leading-relaxed">
+                    <div className="italic">Devis valable 30 Jours</div>
+                    <div>La réalisation des travaux est souscrite par :</div>
+                    <div>- La validation du devis via un Bon de commande ;</div>
+                    <div>- Le paiement peut se faire en espèce ou par virement bancaire à l'ordre de :</div>
+                    <div className="font-bold mt-1" style={{ color: '#1B2A6B' }}>ASTIELL SERVICES</div>
+                    <div>{ENTREPRISE.banque}</div>
+                  </div>
+                </div>
+                <div className="text-xs">
+                  <div className="text-right font-semibold mb-6 text-[#1A1A1A]">La Direction</div>
+                  <div className="grid grid-cols-2 gap-2 mt-8">
+                    <div className="border rounded p-2" style={{ borderColor: '#1B2A6B' }}>
+                      <div className="font-bold text-center mb-1" style={{ color: '#1B2A6B' }}>FOURNISSEUR</div>
+                      <div className="font-bold text-center text-xs" style={{ color: '#1B9AA0' }}>{ENTREPRISE.nom}</div>
+                      <div className="text-[#5F5E5A] text-center" style={{ fontSize: 9 }}>{ENTREPRISE.adresse}</div>
+                      <div className="text-[#5F5E5A] text-center" style={{ fontSize: 9 }}>{ENTREPRISE.email}</div>
+                      <div className="text-[#5F5E5A] text-center" style={{ fontSize: 9 }}>Tel: {ENTREPRISE.telephone}</div>
+                      <div className="mt-4 text-center text-[#888780]" style={{ fontSize: 9 }}>Signature</div>
+                    </div>
+                    <div className="border rounded p-2" style={{ borderColor: '#1B9AA0' }}>
+                      <div className="font-bold text-center mb-1" style={{ color: '#1B9AA0' }}>CLIENT</div>
+                      {(() => {
+                        const client = getCustomer(invoiceToPrint.customerId);
+                        return (
+                          <>
+                            <div className="font-bold text-center" style={{ color: '#1B2A6B', fontSize: 10 }}>{client?.nomComplet}</div>
+                            {client?.entreprise && <div className="text-center text-[#5F5E5A]" style={{ fontSize: 9 }}>{client.entreprise}</div>}
+                            {client?.adresse && <div className="text-center text-[#5F5E5A]" style={{ fontSize: 9 }}>{client.adresse}</div>}
+                          </>
+                        );
+                      })()}
+                      <div className="mt-4 text-center text-[#888780]" style={{ fontSize: 9 }}>Signature</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               {/* Pied de page */}
-              <div className="text-center text-xs text-[#888780] pt-3 leading-relaxed"
-                style={{ borderTop: '2px solid #1B2A6B' }}>
-                <div className="font-semibold mb-1" style={{ color: '#1B2A6B' }}>{ENTREPRISE.nom}</div>
-                <div>{ENTREPRISE.rccm} – {ENTREPRISE.niu} – {ENTREPRISE.scien}</div>
-                <div>{ENTREPRISE.banque}</div>
-                <div className="mt-1">{ENTREPRISE.adresse}</div>
+              <div className="text-center pt-2 leading-relaxed" style={{ borderTop: '2px solid #1B2A6B', fontSize: 9, color: '#888780' }}>
                 <div>Tél : {ENTREPRISE.telephone} – {ENTREPRISE.email}</div>
+                <div>{ENTREPRISE.banque} – {ENTREPRISE.rccm}</div>
+                <div>{ENTREPRISE.scien} – {ENTREPRISE.niu}</div>
+                <div>{ENTREPRISE.adresse}</div>
               </div>
             </div>
 
-            {/* ── Boutons export ── */}
+            {/* Boutons export */}
             <div className="flex justify-between items-center mt-4 pt-4 border-t border-[#E5E4E0]">
               <Button variant="secondary" onClick={() => setIsPrintModalOpen(false)}>Fermer</Button>
               <div className="flex gap-2">
                 <Button variant="secondary" onClick={handleExportCSV} title="Exporter en CSV">
-                  <FileText className="w-4 h-4 text-[#888780]" />
-                  <span className="text-xs">CSV</span>
+                  <FileText className="w-4 h-4 text-[#888780]" /><span className="text-xs">CSV</span>
                 </Button>
                 <Button variant="secondary" onClick={handleExportExcel} title="Exporter en Excel">
-                  <FileSpreadsheet className="w-4 h-4 text-[#0F6E56]" />
-                  <span className="text-xs">Excel</span>
+                  <FileSpreadsheet className="w-4 h-4 text-[#0F6E56]" /><span className="text-xs">Excel</span>
                 </Button>
-                <Button variant="secondary" onClick={handleExportPDF} disabled={exportingPdf} title="Télécharger en PDF">
+                <Button variant="secondary" onClick={handleExportPDF} disabled={exportingPdf} title="PDF">
                   {exportingPdf ? <LoadingSpinner size="sm" /> : <FileDown className="w-4 h-4 text-[#A32D2D]" />}
                   <span className="text-xs">PDF</span>
                 </Button>
                 <Button onClick={() => window.print()}>
-                  <Printer className="w-4 h-4" />
-                  Imprimer
+                  <Printer className="w-4 h-4" />Imprimer
                 </Button>
               </div>
             </div>
@@ -672,6 +762,26 @@ export default function FacturesPage() {
                 )}
               </FormField>
             </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <FormField label="Référence" >
+                <Input value={step1.reference}
+                  onChange={(v) => setStep1({ ...step1, reference: v })}
+                  placeholder="Ex: Fact_0100-2026/DG/Finances/BZV" />
+              </FormField>
+              <FormField label="ID Client">
+                <Input value={step1.idClient}
+                  onChange={(v) => setStep1({ ...step1, idClient: v })}
+                  placeholder="Ex: ASS-OYO-124C2" />
+              </FormField>
+            </div>
+
+            <FormField label="Description">
+              <Input value={step1.description}
+                onChange={(v) => setStep1({ ...step1, description: v })}
+                placeholder="Ex: Fourniture des consommables de Bureaux_Avril_26" />
+            </FormField>
+
             <div className="grid grid-cols-2 gap-4">
               <FormField label="Date d'échéance" required>
                 <Input type="date" value={step1.dateEcheance}
@@ -683,15 +793,18 @@ export default function FacturesPage() {
                   min="0" max="100" step="0.5" required />
               </FormField>
             </div>
+
             <FormField label="Notes">
               <TextArea value={step1.notes} onChange={(v) => setStep1({ ...step1, notes: v })}
-                rows={3} placeholder="Informations complémentaires..." />
+                rows={2} placeholder="Informations complémentaires..." />
             </FormField>
+
             {lignesError && (
               <div className="flex items-center gap-2 text-sm text-red-600 bg-red-50 border border-red-200 rounded-md px-3 py-2">
                 <AlertCircle className="w-4 h-4 shrink-0" />{lignesError}
               </div>
             )}
+
             <div className="flex justify-end gap-3 pt-4 border-t border-[#E5E4E0]">
               <Button type="button" variant="secondary" onClick={handleCloseModal}>Annuler</Button>
               <Button type="button" onClick={handleNextStep}
@@ -709,20 +822,25 @@ export default function FacturesPage() {
               <span><strong>Client :</strong> {getCustomerName(step1.customerId)}</span>
               <span><strong>Échéance :</strong> {formatDate(step1.dateEcheance)}</span>
               <span><strong>TVA :</strong> {step1.tauxTVA}%</span>
+              {step1.reference && <span><strong>Réf :</strong> {step1.reference}</span>}
+              {step1.idClient && <span><strong>ID Client :</strong> {step1.idClient}</span>}
             </div>
+
             <div className="border border-[#E5E4E0] rounded-md overflow-hidden">
               <table className="w-full text-sm">
                 <thead className="bg-[#F7F6F3]">
                   <tr>
+                    <th className="text-center px-2 py-2 text-xs font-medium text-[#5F5E5A] w-10">N°</th>
                     <th className="text-left px-3 py-2 text-xs font-medium text-[#5F5E5A]">Désignation</th>
-                    <th className="text-right px-3 py-2 text-xs font-medium text-[#5F5E5A] w-24">Qté</th>
-                    <th className="text-right px-3 py-2 text-xs font-medium text-[#5F5E5A] w-32">Prix unit. (FCFA)</th>
-                    <th className="text-right px-3 py-2 text-xs font-medium text-[#5F5E5A] w-32">Total (FCFA)</th>
+                    <th className="text-right px-3 py-2 text-xs font-medium text-[#5F5E5A] w-20">Qté</th>
+                    <th className="text-right px-3 py-2 text-xs font-medium text-[#5F5E5A] w-32">P U (FCFA)</th>
+                    <th className="text-right px-3 py-2 text-xs font-medium text-[#5F5E5A] w-32">P T (FCFA)</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#E5E4E0]">
                   {lignes.map((ligne, index) => (
                     <tr key={ligne.id} className="hover:bg-[#F7F6F3]">
+                      <td className="text-center px-2 py-2 text-xs text-[#888780]">{index + 1}</td>
                       <td className="px-3 py-2">
                         <input type="text" value={ligne.designation}
                           onChange={(e) => handleLigneChange(index, 'designation', e.target.value)}
@@ -739,27 +857,35 @@ export default function FacturesPage() {
                           className="w-full bg-transparent border-b border-transparent hover:border-[#D1D0CC] focus:border-[#185FA5] focus:outline-none text-sm text-right text-[#1A1A1A] py-0.5" />
                       </td>
                       <td className="px-3 py-2 text-right font-medium text-[#1A1A1A]">
-                        {(ligne.quantite * ligne.prixUnitaire).toLocaleString('fr-FR')}
+                        {(ligne.quantite * ligne.prixUnitaire).toLocaleString('fr-FR')},00
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
+
             <div className="border border-[#E5E4E0] rounded-md overflow-hidden">
               <div className="flex justify-between px-4 py-2 text-sm text-[#5F5E5A]">
-                <span>Montant HT</span><span>{montantHT.toLocaleString('fr-FR')} FCFA</span>
+                <span>Total HT</span><span className="font-semibold">{montantHT.toLocaleString('fr-FR')},00 FCFA</span>
               </div>
               <div className="flex justify-between px-4 py-2 text-sm text-[#5F5E5A] border-t border-[#E5E4E0]">
-                <span>TVA ({step1.tauxTVA}%)</span><span>{montantTVA.toLocaleString('fr-FR')} FCFA</span>
+                <span>TVA ({step1.tauxTVA}%)</span>
+                <span>{montantTVA > 0 ? `${montantTVA.toLocaleString('fr-FR')},00 FCFA` : '/'}</span>
               </div>
-              <div className="flex justify-between px-4 py-2 text-sm font-semibold text-[#1A1A1A] bg-[#F7F6F3] border-t border-[#E5E4E0]">
-                <span>Total TTC</span><span>{montantTTC.toLocaleString('fr-FR')} FCFA</span>
+              <div className="flex justify-between px-4 py-2 text-sm text-[#5F5E5A] border-t border-[#E5E4E0]">
+                <span>CA 5%</span><span>/</span>
+              </div>
+              <div className="flex justify-between px-4 py-2 text-sm font-bold text-white border-t border-[#E5E4E0]"
+                style={{ backgroundColor: '#1B2A6B' }}>
+                <span>TOTAL TTC</span><span>{montantTTC.toLocaleString('fr-FR')},00 FCFA</span>
               </div>
             </div>
-            <p className="text-xs text-[#888780]">
-              💡 Les montants définitifs sont recalculés par le serveur. Vous pouvez ajuster les lignes ci-dessus pour prévisualisation.
-            </p>
+
+            <div className="px-3 py-2 rounded text-xs italic" style={{ border: '1px solid #1B9AA0', color: '#1B2A6B' }}>
+              Arrêté en Hors Taxes à la somme de <strong>{montantEnLettres(montantHT)}</strong>
+            </div>
+
             <div className="flex justify-between gap-3 pt-4 border-t border-[#E5E4E0]">
               <Button type="button" variant="secondary" onClick={() => setStep(1)}>
                 <ArrowLeft className="w-4 h-4" />Retour
